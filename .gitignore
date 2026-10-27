@@ -1,0 +1,8 @@
+# generated data: rebuild with python -m island.gen_h1
+data/
+runs/
+adapters/
+__pycache__/
+*.pyc
+.venv*/
+.pytest_cache/

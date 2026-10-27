@@ -1,0 +1,86 @@
+# Quote Desk Procedure
+
+Follow these steps in order to handle each incoming quote desk ticket.
+
+---
+
+## 1. Review the Ticket and Thread History
+1. Note today's date (`YYYY-MM-DD`), the `ticket_id`, and the customer's first name.
+2. Read the **New message**:
+   - If the new message is a follow-up (e.g., *"Following up on my request below"*, *"Just checking on the quote for this"*, *"Any update on this one?"*), read the **Earlier in this thread** section to find the customer's actual quote request.
+   - Ignore general pre-quote questions in the earlier thread (such as questions about local delivery, artwork file formats, two-color printing, or rush orders) that have already been answered by the shop.
+3. Determine whether the request is a **Repeat/Reorder Quote** (referencing a past quote ID like `Q-XXXX`) or a **New Quote Request** (listing items and quantities), and note the customer's requested latest ship date.
+
+---
+
+## 2. Gather Item Details, Check Stock, and Determine Pricing
+
+Always keep line items in the exact order they appear in the customer's request or previous quote.
+
+### A. Repeat / Reorder Requests
+When the customer asks to repeat or reorder a previous quote with the same items and quantities:
+1. **Normalize the Quote ID**: Ensure the referenced quote ID is uppercase (e.g., convert `q-1234` to `Q-1234`).
+2. **Look up the quote**: Call `lookup_quote {"quote_id": "<Q-ID>"}`.
+3. **Branch based on the returned `status`**:
+   - **If `status` is `"approved"`**:
+     - Keep the `unit_price` values from the looked-up quote. Do **not** call `get_cost` or `calc_price`.
+     - Call `check_stock {"qty": <qty>, "sku": "<sku>"}` for each line item.
+   - **If `status` is `"expired"`**:
+     - Do not use the old prices.
+     - For each line item from the looked-up quote, call both `check_stock` and `get_cost`, then calculate current pricing with `calc_price` (following the **New Quote Requests** process below).
+
+### B. New Quote Requests (and Expired Reorders)
+For each requested item:
+1. **Check stock and get current cost**:
+   - Call `check_stock {"qty": <qty>, "sku": "<sku>"}` and `get_cost {"sku": "<sku>"}` for every item before calculating prices. (You may call both per item sequentially or batch all `check_stock` calls and all `get_cost` calls.)
+   - **Handling Unknown SKUs / Typos**: Pass the SKU as written in the request. If `check_stock` or `get_cost` returns `"error": "unknown_sku"` with a `"did_you_mean"` value, immediately retry that tool call using the `"did_you_mean"` SKU and use that corrected SKU for all remaining steps.
+   - **Handling Out-of-Stock Items (`"enough": false`)**: Do **not** switch to or offer any item from the `substitutes` list. Continue quoting the exact requested SKU and quantity, and note the item's `restock_date`.
+2. **Calculate line prices**:
+   - Once stock and costs are retrieved for all items, call `calc_price {"qty": <qty>, "sku": "<sku>", "unit_cost": <unit_cost>}` for each item in order, using the `unit_cost` returned by `get_cost`.
+
+---
+
+## 3. Determine the Ship Date and Create the Quote
+
+1. **Determine `ship_by` (`YYYY-MM-DD`)**:
+   - **All items in stock (`"enough": true`)**: Set `ship_by` to the customer's requested ship date or 1–2 days earlier.
+   - **Any item out of stock (`"enough": false`)**: Set `ship_by` to the out-of-stock item's `restock_date` or 1–2 days after the `restock_date`.
+2. **Create the quote**:
+   - Call `create_quote` with:
+     - `ticket_id`: The current ticket ID.
+     - `ship_by`: The calculated ship date (`YYYY-MM-DD`).
+     - `lines`: The list of `{"qty": <qty>, "sku": "<sku>", "unit_price": <unit_price>}` objects in order, using the `unit_price` from `calc_price` (or from `lookup_quote` if the previous quote was `"approved"`).
+
+---
+
+## 4. Send the Reply
+
+Call `send_reply {"message": "<message>", "quote_id": "<quote_id>", "ticket_id": "<ticket_id>"}` using the `quote_id` and `total` returned by `create_quote`.
+
+### Message Formatting Rules
+- **Item names**: Always use the canonical item `name` returned by the tools (never the raw SKU or a typo).
+- **Line item list (`<lines>`)**: Format each line as `<qty> x <name> at $<unit_price>`, separated by `; ` (semicolon and space) when there are multiple items.
+- **Currency**: Format all dollar values (`unit_price` and `total`) to 2 decimal places (e.g., `$0.20`, `$46.50`), and use a comma for thousands in the total (e.g., `$1,402.50`).
+- **Dates**: Write all dates in `YYYY-MM-DD` format.
+
+### Message Structure
+Construct `<message>` by combining **Part 1 + Part 2 (if applicable) + Part 3**, separated by spaces:
+
+1. **Part 1 — Greeting & Quote Summary** (choose one greeting: `Hi`, `Hello`, or `Thanks`, and one summary template):
+   - `<Greeting> <First Name>, your quote <quote_id> is attached: <lines>. The total comes to $<total> and it can ship by <ship_by>.`
+   - `<Greeting> <First Name>, here is quote <quote_id>: <lines>. Total $<total>, ready to ship by <ship_by>.`
+   - `<Greeting> <First Name>, quote <quote_id> covers <lines>, $<total> in total, shipping by <ship_by>.`
+
+2. **Part 2 — Exception / Status Notes** (include only when applicable):
+   - **If repeating an `"approved"` quote**:
+     - `These are your approved prices from <Q-ID>.`
+   - **If repeating an `"expired"` quote**:
+     - `<Q-ID> has expired, so this quote uses current pricing.`
+   - **If an item is out of stock (`"enough": false`)** (choose one):
+     - `<item name> is out of stock until <restock_date>, so the earliest we can ship is <ship_by>. Let me know if that date works.`
+     - `We're waiting on a restock of <item name> (<restock_date>), so I set the ship date to <ship_by>.`
+
+3. **Part 3 — Closing** (choose one):
+   - `Reply to confirm and we'll get started.`
+   - `Let me know if you'd like to go ahead.`
+   - `Happy to adjust anything.`

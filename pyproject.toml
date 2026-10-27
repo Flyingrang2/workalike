@@ -1,0 +1,14 @@
+[project]
+name = "workalike"
+version = "0.1.0"
+description = "Watch how a person works, keep what they saw and did, and train a LoRA that works their way."
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+render = ["transformers>=5"]
+screen = ["playwright>=1.50"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

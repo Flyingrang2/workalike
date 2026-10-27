@@ -1,0 +1,102 @@
+### Quote Desk Procedure
+
+Follow these steps in order for every incoming ticket at the quote desk.
+
+---
+
+### 1. Check Thread History and Send Initial Acknowledgment
+1. **Inspect the thread history and new message:**
+   - **Follow-up on an already-acknowledged request:** If the customer's quote details were sent in an earlier message that a shop worker has already acknowledged (e.g., promising a quote shortly), and the new message is only following up on status (such as *"Following up on my request below"*, *"Just checking on the quote for this"*, or *"Any update on this one?"*), **do not** send an initial acknowledgment reply. Proceed directly to Step 2 using the quote details from the earlier message.
+   - **New quote request:** If the new message contains the quote request (even if there were earlier messages about general questions like local delivery, rush orders, artwork format, or two-color printing), send an immediate acknowledgment before calling any other tools.
+2. **Send the initial reply (`send_reply`):**
+   - Pass only `ticket_id` and `message` (do not include `quote_id`).
+   - Address the customer by their first name and state that you are checking stock and costs/pricing and will follow up with a quote shortly, using one of these standard phrasings:
+     - `"Thanks {FirstName}! Got your message. I'll confirm pricing and availability and get a quote back to you today."`
+     - `"Hi {FirstName}, thanks for the request. I'm checking stock and current costs now and will send your quote shortly."`
+     - `"Thanks for the order request, {FirstName}. I'm on it and will send a full quote once I've confirmed costs and stock."`
+     - `"Hi {FirstName}, received, thank you. Pricing and stock check in progress; your quote will follow soon."`
+     - `"Hello {FirstName}, thanks for reaching out. Give me a little time to check costs and stock, and I'll follow up with a quote."`
+
+---
+
+### 2. Identify the Request Type (New Order vs. Repeat Order)
+Determine whether the customer is listing items directly or asking to repeat/reorder a past quote:
+
+#### A. Repeat / Reorder of a Past Quote
+1. Call `lookup_quote` with `quote_id` normalized to uppercase (e.g., convert `q-1244` to `Q-1244`).
+2. Check the `status` returned by `lookup_quote`:
+   - **If `"status": "approved"`:**
+     - Call `check_stock` for each line item (`sku` and `qty`) from the looked-up quote, in order.
+     - **Do not** call `get_cost` or `calc_price`. Keep the approved `unit_price` values from the looked-up quote for Step 5.
+   - **If `"status": "expired"`:**
+     - The old prices cannot be reused. Proceed to Step 3 using the line items (`sku` and `qty`) from the looked-up quote to check stock, get current costs, and calculate current pricing.
+
+#### B. Standard Quote Request
+- Extract each requested item's SKU and quantity in the order listed by the customer, and proceed to Step 3.
+
+---
+
+### 3. Check Stock, Get Current Costs, and Handle Exceptions
+For all standard quote requests and expired repeat orders, call both `check_stock` (`qty`, `sku`) and `get_cost` (`sku`) for every requested item before calculating prices.
+
+Handle exceptions as follows:
+
+1. **Unknown or Misspelled SKU (`"error": "unknown_sku"`):**
+   - If `check_stock` or `get_cost` returns `"error": "unknown_sku"` along with a `"did_you_mean"` SKU suggestion, immediately retry the failed tool call using the `"did_you_mean"` SKU.
+   - Use the corrected SKU for all remaining tool calls (`check_stock`, `get_cost`, `calc_price`, `create_quote`). Do not mention the SKU typo in the reply to the customer.
+
+2. **Insufficient Stock (`"enough": false`):**
+   - Ensure both `check_stock` and `get_cost` have been called on all originally requested SKUs (including the out-of-stock SKU).
+   - When `check_stock` returns `"enough": false` (and the `restock_date` is after the needed ship date), select the substitute item from the `substitutes` list that has enough stock `on_hand` to cover the requested quantity.
+   - Call `get_cost` for the substitute `sku` (you do not need to call `check_stock` on the substitute SKU).
+   - Replace the original item with the substitute SKU (keeping the same requested quantity and line position) for price calculation and quote creation.
+
+---
+
+### 4. Calculate Unit Prices
+- Skip this step only if repeating an `"approved"` quote from `lookup_quote`.
+- For all other orders, after all `check_stock` and `get_cost` calls (including for any substitutes) are complete, call `calc_price` for each line item in order, passing:
+  - `qty`: the requested quantity
+  - `sku`: the valid (or substitute) SKU
+  - `unit_cost`: the exact `unit_cost` returned by `get_cost` for that SKU
+
+---
+
+### 5. Create the Quote
+Call `create_quote` with:
+- `ticket_id`: the ticket ID
+- `lines`: the list of items in their original request order, each with `qty`, `sku` (using the corrected or substitute SKU if applicable), and `unit_price` (from `calc_price`, or from `lookup_quote` if status was `"approved"`).
+- `ship_by`: a date formatted as `YYYY-MM-DD` that meets the customer's requested ship deadline—set to either the exact requested date, 1 day earlier, or 2 days earlier.
+
+---
+
+### 6. Send the Final Quote Reply
+Call `send_reply` with `ticket_id`, `quote_id` (from `create_quote`), and `message`.
+
+Construct `message` by combining the following parts in order:
+
+1. **Greeting, Quote Summary, Total, and Ship Date:**
+   Use one of these three templates (with `{Greeting}` as `"Hi"`, `"Hello"`, or `"Thanks"`):
+   - `"{Greeting} {FirstName}, quote {quote_id} covers {lines_summary}, ${total} in total, shipping by {ship_by}."`
+   - `"{Greeting} {FirstName}, here is quote {quote_id}: {lines_summary}. Total ${total}, ready to ship by {ship_by}."`
+   - `"{Greeting} {FirstName}, your quote {quote_id} is attached: {lines_summary}. The total comes to ${total} and it can ship by {ship_by}."`
+   - **Formatting rules:**
+     - Format `{lines_summary}` as `{qty} x {item_name} at ${unit_price}`, separating multiple items with `"; "` (e.g., `190 x A5 spiral notebook at $4.54; 125 x 20 oz steel tumbler at $10.63`).
+     - Always use the canonical item `name` returned by the tools (never the SKU).
+     - Format all dollar amounts (`unit_price` and `total`) to two decimal places, and include a thousands comma for totals of `$1,000.00` or more.
+     - `{ship_by}` must match the exact `YYYY-MM-DD` date used in `create_quote`.
+
+2. **Exception / Repeat-Order Note (include only when applicable):**
+   - **If an item was substituted due to low stock:** Add one of the following sentences:
+     - `"{original_item_name} is short right now, so I quoted {substitute_item_name} instead, which can ship by {ship_by}."`
+     - `"We're low on {original_item_name}, so this quote swaps in {substitute_item_name} to keep your date of {ship_by}."`
+   - **If repeating an `"approved"` quote:** Add:
+     - `"These are your approved prices from {old_quote_id}."`
+   - **If repeating an `"expired"` quote:** Add:
+     - `"{old_quote_id} has expired, so this quote uses current pricing."`
+
+3. **Closing Sentence:**
+   End with one of the following:
+   - `"Happy to adjust anything."`
+   - `"Reply to confirm and we'll get started."`
+   - `"Let me know if you'd like to go ahead."`
