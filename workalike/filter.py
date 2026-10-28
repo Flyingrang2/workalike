@@ -8,7 +8,9 @@ Error results stay: a mistake followed by a correct recovery is worth learning.
 """
 from __future__ import annotations
 
-VIEW_KEYS = ("today", "ticket_id", "from", "body", "thread")
+# Every field a worker has on screen. quote-desk/2 adds the discount authority and what was sent so far;
+# leaving a screen field out makes training rows differ from what the model sees when it works.
+VIEW_KEYS = ("today", "ticket_id", "from", "body", "thread", "authority", "sent_so_far")
 THREAD_KEYS = ("date", "who", "text")
 
 

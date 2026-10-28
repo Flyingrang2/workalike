@@ -188,7 +188,41 @@ def test_a_second_quote_or_an_amount_the_desk_never_gave_is_wrong(tmp_path):
     early["args"]["quote_id"] = "Q-0-1"
     twice = copy.deepcopy(ep)
     twice["turns"].insert(0, {"calls": [early]})
-    assert "another quote sent to the customer" in score(t, twice)["reasons"]
+    assert "sent a quote the desk never made" in score(t, twice)["reasons"]
+
+
+def two_quotes(t, tmp_path, order):
+    """A short ticket answered with both valid quotes, made in the given order, the first one attached."""
+    desk = Desk(t["hidden"]["state"])
+    g, sku = t["grader"], t["grader"]["short"]["sku"]
+    sub = next(iter(g["short"]["substitutes"]))
+    later = [dict(l) for l in g["lines"]], g["short"]["restock_date"]
+    swap = [dict(l, sku=sub, unit_price=g["short"]["substitutes"][sub]) if l["sku"] == sku else dict(l)
+            for l in g["lines"]], g["need_by"]
+    calls = []
+    for lines, ship in (later, swap) if order == "later_first" else (swap, later):
+        calls.append(("create_quote", {"ticket_id": t["view"]["ticket_id"], "lines": lines, "ship_by": ship}))
+    done = desk.call_many(calls)
+    ids = [d["result"]["quote_id"] for d in done]
+    msg = f"Two options: {ids[0]} is attached, and {ids[1]} is the other one. Pick whichever suits you."
+    done += desk.call_many([("send_reply", {"ticket_id": t["view"]["ticket_id"], "message": msg, "quote_id": ids[0]})])
+    return {"view": t["view"], "turns": [{"calls": done}], "final": "Done."}
+
+
+def test_two_valid_quotes_score_the_same_in_either_order(tmp_path):
+    t = family("stock_short")
+    scores = [score(t, two_quotes(t, tmp_path, o)) for o in ("later_first", "swap_first")]
+    for s in scores:
+        assert s["correct"] and s["reasons"] == [] and s["short_choice"] == "both"
+
+
+def test_an_invalid_second_quote_offered_is_wrong(tmp_path):
+    t = family("stock_short")
+    ep = two_quotes(t, tmp_path, "later_first")
+    made = [c for c in calls_of(ep) if c["name"] == "create_quote"]
+    made[1]["result"]["lines"][0]["unit_price"] += 0.5
+    s = score(t, ep)
+    assert not s["correct"] and any(r.startswith(made[1]["result"]["quote_id"] + ": wrong price") for r in s["reasons"])
 
 
 def test_a_price_in_words_before_the_quote_is_a_promise(tmp_path):

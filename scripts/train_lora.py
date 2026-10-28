@@ -9,8 +9,7 @@ follows the Glimmer post-training guide: 4-bit NF4 base with bf16 compute and bf
 quant storage. The checkpoint's own class (MuseGlimmerForConditionalGeneration) is
 loaded so adapter names match what servers read; adapters go on the language
 model's attention and MLP projections, never the vision tower. The matched module
-names, library versions and arguments are saved next to the adapter.
-Not yet run on GPU.
+names, library versions, arguments, trained tokens and steps are saved next to the adapter.
 """
 from __future__ import annotations
 
@@ -88,7 +87,8 @@ def main() -> None:
     ap.add_argument("--accum", type=int, default=4)
     ap.add_argument("--max-len", type=int, default=4096)
     ap.add_argument("--max-steps", type=int, default=-1, help="for smoke runs")
-    ap.add_argument("--limit", type=int, help="train on the first N rows only (overfit checks)")
+    ap.add_argument("--limit", type=int, help="train on the first N rows only (overfit checks, data-size curves)")
+    ap.add_argument("--seed", type=int, default=42, help="Trainer seed (42 is the Trainer default the E2 runs used)")
     ap.add_argument("--target", default=LANGUAGE_PROJECTIONS)
     ap.add_argument("--causal", action="store_true", help="load with AutoModelForCausalLM instead")
     args = ap.parse_args()
@@ -115,7 +115,8 @@ def main() -> None:
                                per_device_train_batch_size=args.batch, gradient_accumulation_steps=args.accum,
                                learning_rate=args.lr, lr_scheduler_type="cosine", warmup_steps=0.05, bf16=True,
                                logging_steps=1, save_strategy="epoch", save_total_limit=1, save_only_model=True, report_to=[],
-                               gradient_checkpointing=True, remove_unused_columns=False),
+                               gradient_checkpointing=True, remove_unused_columns=False,
+                               seed=args.seed, data_seed=args.seed),
         train_dataset=data,
         data_collator=collate,
     )

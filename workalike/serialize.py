@@ -25,9 +25,9 @@ def canonical_json(obj) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
-def order_args(name: str, args):
+def order_args(name: str, args, specs: dict | None = None):
     """Arguments in schema order, so every source writes them the same way."""
-    spec = SPEC_BY_NAME.get(name)
+    spec = (specs or SPEC_BY_NAME).get(name)
     if spec is None or not isinstance(args, dict):
         return args
     props = list(spec["parameters"]["properties"])
@@ -44,18 +44,18 @@ def render_view(view: dict) -> str:
     return "\n\n".join(parts)
 
 
-def head_messages(view: dict, system: str = SYSTEM_PROMPT) -> list[dict]:
-    return [{"role": "system", "content": system}, {"role": "user", "content": render_view(view)}]
+def head_messages(view: dict, system: str = SYSTEM_PROMPT, render=render_view) -> list[dict]:
+    return [{"role": "system", "content": system}, {"role": "user", "content": render(view)}]
 
 
-def turn_messages(calls: list[dict]) -> list[dict]:
+def turn_messages(calls: list[dict], specs: dict | None = None) -> list[dict]:
     """One assistant turn of tool calls followed by one tool message per call."""
     assistant = {
         "role": "assistant",
         "content": "",
         "tool_calls": [
             {"id": c["id"], "type": "function",
-             "function": {"name": c["name"], "arguments": order_args(c["name"], c["args"])}}
+             "function": {"name": c["name"], "arguments": order_args(c["name"], c["args"], specs)}}
             for c in calls
         ],
     }
@@ -68,10 +68,14 @@ def final_message(text: str) -> dict:
     return {"role": "assistant", "content": text}
 
 
-def to_messages(episode: dict) -> list[dict]:
-    messages = head_messages(episode["view"])
+def to_messages(episode: dict, env=None) -> list[dict]:
+    """env is a desk version from workalike.envs; None is quote-desk/1."""
+    if env is None:
+        messages, specs = head_messages(episode["view"]), None
+    else:
+        messages, specs = head_messages(episode["view"], env.system_prompt, env.render_view), env.spec_by_name
     for turn in episode["turns"]:
-        messages += turn_messages(turn["calls"])
+        messages += turn_messages(turn["calls"], specs)
     if episode.get("final") is not None:
         messages.append(final_message(episode["final"]))
     return messages

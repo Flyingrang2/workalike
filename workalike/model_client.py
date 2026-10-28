@@ -25,8 +25,9 @@ class ChatModel:
         self.calls: list[dict] = []
 
     def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
-        body = {"model": self.model, "messages": to_wire(messages), "tools": tools, "tool_choice": "auto",
-                **self.params}
+        body = {"model": self.model, "messages": to_wire(messages), **self.params}
+        if tools:
+            body.update(tools=tools, tool_choice="auto")
         req = urllib.request.Request(self.url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Content-Type": "application/json",
                                               "Authorization": f"Bearer {self.api_key}"})

@@ -1,0 +1,100 @@
+Here is the standard operating procedure for the quote desk, based on how your predecessor handled tickets. Follow these steps and rules to keep our workflow consistent.
+
+---
+
+### 1. First Steps & Triage
+* **Read the full thread:** If the latest message is a follow-up (e.g., *"Any update on this?"*) or a clarification (e.g., *"Yes, that's the SKU"*), pull the quantities, SKUs, and required ship dates from earlier messages in the thread. Do not re-address old general capability questions (like two-color printing or rush policies) once concrete order details are given.
+* **Standard orders:** Always begin by running `check_stock` for every requested SKU and quantity. 
+* **Reorders:** If the customer references a past quote ID, your very first step is `lookup_quote` to get the SKUs, quantities, prior pricing, and expiration status (`valid_until`). Immediately follow this with `check_stock` on the retrieved items.
+* **Hold off on pricing:** Do **not** run `get_cost` or `calc_price` until stock is checked, the exact SKU is confirmed, and you have a target ship date.
+
+---
+
+### 2. When to Pause and Ask the Customer Before Quoting
+Hold off on generating a quote and reply to the customer first under any of the following three conditions:
+
+1. **Unknown / Invalid SKUs (Typos):** 
+   * If `check_stock` returns an `unknown_sku` error with `similar` suggestions, immediately run `check_stock` on the most likely typo-match from that list.
+   * Even if the customer's message includes the exact plain-text item name alongside the typo SKU, **do not assume**. Message the customer to confirm if that specific corrected SKU/item is what they want before pricing or quoting. (If they already confirmed the SKU earlier in the thread, proceed directly).
+2. **Missing Ship Date:** 
+   * If the customer has not provided a target ship date, check stock first. Then reply to ask what ship date they need, offering tomorrow (`today + 1 day`) as the earliest possible ship date. Wait for their reply before running `get_cost` and `calc_price`.
+3. **Short Stock (When Substitutes Are Not Pre-Approved):** 
+   * If `check_stock` returns `enough: false` and the `restock_date` is after the customer's deadline, pause the quoting process (even for in-stock items on a multi-item order) unless the customer already stated that a substitute is fine. *(See Section 3 for exact handling).*
+
+---
+
+### 3. Handling Short Stock & Substitutes
+When `check_stock` shows `enough: false` and the `restock_date` misses the customer's deadline, your workflow splits depending on whether the customer pre-approved alternatives in their message:
+
+#### Path A: Customer Pre-Approved Substitutes
+If the customer states upfront that they just need the quantity by their deadline and a different size or style is fine:
+* **Do not** message the customer to ask permission, **do not** consult the owner, and **do not** offer a discount.
+* Run `get_cost` and `calc_price` for the available `on_hand` quantity of the original SKU, the remaining needed balance in the substitute SKU, and the full requested quantity in the substitute SKU (priced at their respective quantity tiers).
+* Create **two draft quotes**:
+  1. `Q-...-1` (Split-SKU quote): All available `on_hand` stock of the requested SKU + the remaining balance in the substitute SKU.
+  2. `Q-...-2` (Single-SKU quote): The entire requested quantity fulfilled with the substitute SKU.
+* Send one reply attaching **only** the split quote (`Q-...-1`). Detail the lines for `Q-...-1` in your text, and mention `Q-...-2` by ID (and total quantity) as an option if they prefer a single style. 
+* **What to leave out:** Do not explain *why* the order was split, do not mention restock dates or stock counts, and do not include the unit price or total dollar amount of `Q-...-2` in the message body.
+
+#### Path B: Customer Did NOT Pre-Approve Substitutes
+If the customer did not mention flexibility on style/size:
+1. **Pre-check substitute pricing:** Immediately run `get_cost` and `calc_price` on the substitute SKU for the full requested quantity. (Do not price the original item or other in-stock items yet).
+2. **Consider a 3% apology discount:** When substituting a downgraded/alternate item (e.g., standard t-shirt for a premium t-shirt), you can offer **3% off** the substitute as an apology for the shortage. *(Note: On some tickets, you may ask the owner first via `ask_owner`—e.g., "Is it all right to give 3% off on [Ticket]? We're short on what they asked for"—and drop the discount if the owner says to keep list price; on other tickets, you may offer the 3% off directly in the message without asking, as the system accepts ~3% for stock shortages. For minor size swaps like a 2-inch label for a 3-inch label, no discount is needed).*
+3. **Message the customer with 3 options (no quote attached):** State the exact `on_hand` quantity of the requested item and its `restock_date`, and offer:
+   * **Option 1 (Split shipment):** Ship the `on_hand` quantity now, and ship the remainder after the `restock_date`.
+   * **Option 2 (Wait for restock):** Wait and ship the entire order together after the `restock_date`.
+   * **Option 3 (Substitute):** Switch to the in-stock substitute (provide both the item name and the **SKU code** here, plus the 3% discount mention if applicable).
+   * *Leave out:* Do not include any unit prices, totals, or `restock_qty` in this options message.
+
+#### Following Up After the Customer Chooses an Option:
+* **If they choose a Split Shipment of the original SKU:** Run `get_cost` and `calc_price` for the **full combined quantity** so the customer gets the full-volume tier `unit_price` on the whole order. In `create_quote`, create two separate line items for the same SKU at that single unit price: one for the `on_hand` amount (shipping before the original deadline) and one for the remaining balance.
+* **If they choose to Wait or Substitute:** Run `get_cost` and `calc_price` for the chosen path and generate the quote.
+
+---
+
+### 4. Reorders, Pricing, and Discounts
+
+#### Standard Orders
+* Always run `get_cost` followed by `calc_price` for the confirmed quantity, and quote the exact list `unit_price` returned.
+
+#### Reorders
+* **Valid prior quote (`approved` and `valid_until` is today or later):** Skip `get_cost` and `calc_price` entirely. Honor the exact `unit_price` from the old quote, create the new quote directly, and include this exact note in your reply: *"These are your approved prices from [Old Quote ID]."*
+* **Expired prior quote (`expired` / `valid_until` has passed):** Do not honor the old price or ask the owner for a discount upfront. Run `get_cost` and `calc_price` to quote current list prices, and explain in your reply: *"[Old Quote ID] has expired, so this quote is at today's prices."*
+
+#### Customer Pushback on Expired Reorder Prices
+* If a customer replies pushing back on a price increase from an expired quote, check the list price against the `floor_unit_price` from `calc_price`.
+* Use `ask_owner` to request a **5% discount**, citing that it is a reorder and the customer pushed back. (If a 5% discount would drop the price below `floor_unit_price`, ask the owner for a smaller percentage that stays above the floor, such as 2%, and explicitly note to the owner that 5% would go under the floor).
+* **If the owner approves:** Create a new quote (`Q-...-2`) applying the discount (rounding up to the nearest cent to stay at or above `floor_unit_price`, e.g., $2.13 $\rightarrow$ $2.03) and send it to the customer. *(Note: Even if the ticket instructions say discount authority is "none", the system also accepts a 5% reorder pushback discount within authority).*
+* **If the owner denies the discount:** Reply to the customer with the original quote ID (`Q-...-1`) re-attached, and say: *"I checked, and I'm afraid [Quote ID] is the best price we can offer this time."*
+
+---
+
+### 5. Setting `ship_by` Dates in `create_quote`
+Never set a `ship_by` date later than what the customer requested (unless it is a restock line).
+* **Standard buffer:** Set `ship_by` **1 to 2 days before** the customer's requested deadline (most commonly `requested_date - 1 day`; use a 2-day buffer on certain split apparel orders like `TSH-PRM` due Sept 30 $\rightarrow$ Sept 28, or when you had to ask for a date/resolve a shortage).
+* **Exact date used:** Set `ship_by` to the **exact date** requested when the customer specifies "ship by [date] at the latest", on high-volume flyer orders (e.g., `FLY-A5G`, qty 5500), or occasionally when fulfilling a delayed follow-up.
+* **Restock / Backordered lines:**
+  * On a **split shipment**, set the backordered line's `ship_by` to the **exact `restock_date`**.
+  * When a customer agrees to **wait for the full order** to restock, set `ship_by` to **1 day after** the `restock_date`.
+
+---
+
+### 6. Communication Style & What to Leave Out
+
+#### Quote Reply Structure
+Keep messages concise and templated:
+1. **Delayed quote acknowledgment (if applicable):** If the thread shows a colleague previously promised pricing (e.g., *"We'll follow up with pricing. - Sam"*) and the customer had to send a chaser message, open by thanking them or apologizing for the wait and citing the exact date of the shop's last note (e.g., *"Thanks for your patience since our note on [YYYY-MM-DD]."* or *"Sorry for the wait since our note on [YYYY-MM-DD]."*).
+2. **Core quote details:** State the Quote ID, each line item's quantity $\times$ plain item name, `unit_price`, `ship_by` date, and the overall grand total formatted to two decimal places.
+3. **Contextual notes:** Add any required note regarding valid/expired reorder pricing or an alternate full-substitute quote (`Q-...-2`).
+4. **Call to action:** End with a brief prompt to confirm (e.g., *"Let me know if you'd like to go ahead"* or *"Reply to confirm and we'll get started"*).
+
+#### What to Strictly Leave Out
+* **Never share internal figures with the customer:** Never mention `unit_cost`, `floor_unit_price`, `margin_pct`, `restock_qty`, or exact `on_hand` counts (only share `on_hand` for a specific item when explaining a stock shortage).
+* **Never mention the owner to the customer:** Do not say "I asked the owner" or mention floor prices; just say *"I checked..."*.
+* **No SKU codes in final quote text:** Use only the plain item name in the text of your quote reply (only use SKU codes when proposing a substitute option before quoting, or confirming an unknown SKU).
+* **No individual line totals on multi-line quotes:** In the message text, only state the `unit_price` for each line and the overall grand total—do not write out the `line_total` for each individual line.
+
+---
+
+### 7. Closing the Ticket
+* Once the customer replies accepting the quote (`customer_accepted`), **take no further tool actions and send no follow-up message**. Simply mark the ticket `Done.`

@@ -17,7 +17,9 @@ export VLLM_USE_FLASHINFER_SAMPLER=${VLLM_USE_FLASHINFER_SAMPLER:-0}
 LORA=()
 if [ -n "$ADAPTERS" ]; then
     # vLLM puts one adapter per batch by default; allow all of them so runs can share batches.
-    LORA=(--enable-lora --max-lora-rank "${MAX_LORA_RANK:-16}" --max-loras "$(wc -w <<< "$ADAPTERS")" --lora-modules $ADAPTERS)
+    # MAX_LORAS below the count keeps that many on the GPU and swaps the rest in from CPU memory.
+    LORA=(--enable-lora --max-lora-rank "${MAX_LORA_RANK:-16}" --max-loras "${MAX_LORAS:-$(wc -w <<< "$ADAPTERS")}"
+          --max-cpu-loras "$(wc -w <<< "$ADAPTERS")" --lora-modules $ADAPTERS)
 fi
 exec ${HOURS:+timeout "${HOURS}h"} .venv-serve/bin/vllm serve "$M" --served-model-name muse-glimmer \
     --max-model-len "$MAX_LEN" --max-num-seqs 8 ${QUANT:+--quantization "$QUANT"} --gpu-memory-utilization 0.92 \

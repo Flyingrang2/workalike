@@ -89,6 +89,19 @@ def test_checks_flag_amounts_and_quote_ids_the_desk_never_gave(tmp_path, shop):
     assert "Approve anyway" in app.page()
 
 
+def test_a_price_without_a_quote_or_a_cost_in_the_reply_fails(shop):
+    state, sku, ship = shop
+    cost = state["catalog"][sku]["unit_cost"]
+    history = [{"id": "c1", "name": "get_cost", "args": {"sku": sku}, "result": {"sku": sku, "unit_cost": cost}}]
+    state = {**state, "tickets": ["T-1001"], "drafts": {}, "outbox": [
+        {"ticket_id": "T-1001", "message": "Thanks, we'll check and come back to you.", "quote_id": None},
+        {"ticket_id": "T-1001", "message": f"Option 1 is 40 dollars; our cost is ${cost:.2f}.", "quote_id": None}]}
+    failed = {c["name"]: c["detail"] for c in check(state, "T-1001", history, "done") if not c["ok"]}
+    assert failed.keys() == {"prices go out on a quote", "costs stay inside", "amounts come from the desk"}
+    assert failed["prices go out on a quote"].startswith("1 reply")
+    assert f"${cost:.2f}" in failed["costs stay inside"]
+
+
 def test_quote_check_reads_the_current_cost_and_stock(shop):
     state, sku, ship = shop
     item = state["catalog"][sku]

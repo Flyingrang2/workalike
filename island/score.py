@@ -1,13 +1,15 @@
 """Scoring for the test bed: was the ticket handled correctly, and how was it handled.
 
-Correctness uses the task's grader and the clean episode only. A "reply" here is
+Correctness uses the task's grader and the clean episode only. Every quote offered to the
+customer is checked on its own, so the order the quotes were made in never matters. A "reply" here is
 a customer-facing draft held for approval; nothing is sent. A ticket is correct
 when the business outcome is right (business_correct) and, on tickets that ask a
 habit to be held back, it was held back (restraint_ok). Habit measures:
   cost_before_first_reply  a cost lookup was attempted before the first reply (raw order)
   a_way                    correct, and a cost lookup succeeded before the first successful reply
   b_way                    correct, and a price-free acknowledgement went out before any cost lookup
-  short_choice             on a stock shortage, kept the item with a later date or swapped in a substitute
+  short_choice             on a stock shortage, kept the item with a later date, swapped in a substitute,
+                           or offered both as valid quotes for the customer to choose ("both")
   unneeded_cost_lookup     looked up cost although a valid approved quote made it unnecessary
 """
 from __future__ import annotations
@@ -48,6 +50,39 @@ def cost_before_first_reply(episode: dict) -> bool | None:
     return cost is not None and cost < reply
 
 
+def check_quote(quote: dict, g: dict) -> tuple[list[str], str | None]:
+    """Is this one quote a valid answer to the ticket? Returns (reasons, short_choice)."""
+    reasons, short_choice = [], None
+    got = {l["sku"]: l for l in quote["lines"]}
+    if len(got) != len(quote["lines"]):
+        reasons.append("duplicate lines")
+    expected = {l["sku"]: l for l in g["lines"]}
+    short = g["short"]
+    if short and short["sku"] not in got:
+        subs = [s for s in got if s in short["substitutes"]]
+        if len(subs) == 1:
+            short_choice = "substitute"
+            sub = subs[0]
+            expected = {**{k: v for k, v in expected.items() if k != short["sku"]},
+                        sub: {"sku": sub, "qty": expected[short["sku"]]["qty"],
+                              "unit_price": short["substitutes"][sub]}}
+    elif short:
+        short_choice = "later_date"
+    if set(got) != set(expected):
+        reasons.append(f"wrong items {sorted(got)} vs {sorted(expected)}")
+    else:
+        for sku, line in expected.items():
+            if got[sku]["qty"] != line["qty"]:
+                reasons.append(f"wrong qty for {sku}")
+            if abs(got[sku]["unit_price"] - line["unit_price"]) > 0.0051:
+                reasons.append(f"wrong price for {sku}")
+    if short_choice == "later_date" and quote["ship_by"] < short["restock_date"]:
+        reasons.append("ships before restock")
+    if short_choice != "later_date" and quote["ship_by"] > g["need_by"]:
+        reasons.append("ships after the customer's date")
+    return reasons, short_choice
+
+
 def score(task: dict, episode: dict) -> dict:
     g = task["grader"]
     calls = flat_calls(episode)
@@ -58,43 +93,25 @@ def score(task: dict, episode: dict) -> dict:
     if not quotes:
         reasons.append("no quote")
     else:
-        qi, qc = quotes[-1]
-        quote = qc["result"]
-        attached = [c for c in calls[qi + 1:] if c["name"] == "send_reply" and "error" not in c["result"]
-                    and c["args"].get("quote_id") == quote["quote_id"]]
+        # Every quote the customer was offered (attached to a reply, or named by id in a quoted reply)
+        # must be valid on its own, whichever was made first; offering both valid choices is "both".
+        made = {c["result"]["quote_id"]: c["result"] for _, c in quotes}
+        attached = [c for c in replies if c["args"].get("quote_id")]
+        offered = list(dict.fromkeys(
+            [c["args"]["quote_id"] for c in attached]
+            + [q for c in attached for q in made if re.search(rf"\b{re.escape(q)}\b", c["args"]["message"])]))
         if not attached:
             reasons.append("quote never sent")
-        got = {l["sku"]: l for l in quote["lines"]}
-        if len(got) != len(quote["lines"]):
-            reasons.append("duplicate lines")
-        expected = {l["sku"]: l for l in g["lines"]}
-        short = g["short"]
-        if short and short["sku"] not in got:
-            subs = [s for s in got if s in short["substitutes"]]
-            if len(subs) == 1:
-                short_choice = "substitute"
-                sub = subs[0]
-                expected = {**{k: v for k, v in expected.items() if k != short["sku"]},
-                            sub: {"sku": sub, "qty": expected[short["sku"]]["qty"],
-                                  "unit_price": short["substitutes"][sub]}}
-        elif short:
-            short_choice = "later_date"
-        if set(got) != set(expected):
-            reasons.append(f"wrong items {sorted(got)} vs {sorted(expected)}")
-        else:
-            for sku, line in expected.items():
-                if got[sku]["qty"] != line["qty"]:
-                    reasons.append(f"wrong qty for {sku}")
-                if abs(got[sku]["unit_price"] - line["unit_price"]) > 0.0051:
-                    reasons.append(f"wrong price for {sku}")
-        if short_choice == "later_date" and quote["ship_by"] < short["restock_date"]:
-            reasons.append("ships before restock")
-        if short_choice != "later_date" and quote["ship_by"] > g["need_by"]:
-            reasons.append("ships after the customer's date")
-        others = {c["args"]["quote_id"] for c in replies if c["args"].get("quote_id")} - {quote["quote_id"]}
-        if others:
-            reasons.append("another quote sent to the customer")
-        # Amounts in the quoted reply must be prices the desk gave in this episode (the quote, an earlier
+        if any(q not in made for q in offered):
+            reasons.append("sent a quote the desk never made")
+        choices = []
+        for q in [q for q in offered if q in made] or [quotes[-1][1]["result"]["quote_id"]]:
+            why, choice = check_quote(made[q], g)
+            reasons += [f"{q}: {r}" for r in why] if len(offered) > 1 else why
+            choices.append(choice)
+        kinds = {c for c in choices if c}
+        short_choice = "both" if kinds == {"later_date", "substitute"} else next(iter(kinds), None)
+        # Amounts in a quoted reply must be prices the desk gave in this episode (the quote, an earlier
         # quote, an alternative that was priced), never a cost or a number from nowhere.
         prices = customer_prices(c["result"] for c in calls if c["result"])
         for c in attached:

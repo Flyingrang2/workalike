@@ -144,3 +144,16 @@ def test_chat_client_round_trip(tmp_path):
     assert note["vis"] == "private" and note["source"] == "reasoning"
     assert "check cost first" not in json.dumps(clean_episode(events))
     assert model.calls[0]["usage"]["prompt_tokens"] == 10
+
+
+def test_a_second_sitting_keeps_finished_tickets_and_drops_a_half_worked_one(tmp_path):
+    from island.serve_web import keep_finished
+    from workalike.record import Recorder
+    records = tmp_path / "records.jsonl"
+    rec = Recorder(records)
+    rec.start("e-1", {"ticket_id": "T-1"}, task_id="dev-0000", actor="me")
+    rec.end("done")
+    rec.start("e-2", {"ticket_id": "T-2"}, task_id="dev-0001", actor="me")
+    assert keep_finished(records) == {"dev-0000"}
+    assert {json.loads(line)["ep"] for line in records.read_text().splitlines()} == {"e-1"}
+    assert keep_finished(tmp_path / "new.jsonl") == set() and (tmp_path / "new.jsonl").exists()

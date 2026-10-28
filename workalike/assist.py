@@ -31,6 +31,7 @@ from .record import Recorder, wall_clock
 from .web import CSS, describe, make_server
 
 MONEY = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)")
+PRICE = re.compile(r"\$\s?\d|\b\d[\d,]*(?:\.\d+)?\s?(?:USD|dollars?)\b", re.IGNORECASE)  # as island/score.py
 QUOTE_ID = re.compile(r"\bQ-[A-Z0-9]+(?:-\d+)?\b", re.IGNORECASE)
 def _quote_problems(state: dict, draft: dict) -> list[str]:
     problems = []
@@ -48,11 +49,20 @@ def check(state: dict, ticket_id: str, history: list[dict], status: str) -> list
     replies = [r for r in state["outbox"] if r["ticket_id"] == ticket_id]
     prices = customer_prices(c["result"] for c in history)
     stray = sorted({m for r in replies for m in MONEY.findall(r["message"]) if cents(m) not in prices})
+    costs = {cents(c["result"]["unit_cost"]) for c in history
+             if c["name"] == "get_cost" and isinstance(c["result"], dict) and "unit_cost" in c["result"]}
+    shown = sorted({m for r in replies for m in MONEY.findall(r["message"]) if cents(m) in costs - prices})
+    # A price only binds on a quote the owner can approve; a price in plain text is a promise nobody checked.
+    loose = sum(1 for r in replies if not r.get("quote_id") and PRICE.search(r["message"]))
     known = {q.upper() for q in [*state["quotes"], *state["drafts"]]}
     unknown = sorted({q for r in replies for q in QUOTE_ID.findall(r["message"]) if q.upper() not in known})
     checks = [
         {"name": "finished", "ok": status == "done", "detail": status},
         {"name": "reply drafted", "ok": bool(replies), "detail": f"{len(replies)} held for approval"},
+        {"name": "prices go out on a quote", "ok": not loose,
+         "detail": f"{loose} reply quotes a price with no quote attached" if loose else "no price outside a quote"},
+        {"name": "costs stay inside", "ok": not shown,
+         "detail": ("our cost shown: " + ", ".join(f"${s}" for s in shown)) if shown else "no unit cost in a reply"},
         {"name": "amounts come from the desk", "ok": not stray,
          "detail": ("not a desk price: " + ", ".join(f"${s}" for s in stray)) if stray else "every amount is a desk price"},
         {"name": "quote ids exist", "ok": not unknown,

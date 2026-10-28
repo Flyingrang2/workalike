@@ -12,11 +12,20 @@ from .desk import TOOL_SPECS, Desk
 from .serialize import SYSTEM_PROMPT, final_message, head_messages, turn_messages
 
 
-def run(desk: Desk, view: dict, model, max_turns: int = 24, system: str = SYSTEM_PROMPT) -> tuple[list[dict], str]:
-    """Work one ticket. Returns (messages, status); the caller starts and ends the record."""
-    messages = head_messages(view, system)
+def run(desk: Desk, view: dict, model, max_turns: int = 24, system: str | None = None,
+        env=None) -> tuple[list[dict], str]:
+    """Work one ticket. Returns (messages, status); the caller starts and ends the record.
+
+    env is a desk version from workalike.envs (None is quote-desk/1); the desk must use the same one.
+    """
+    tools = env.tool_specs if env else TOOL_SPECS
+    specs = env.spec_by_name if env else None
+    if env is None:
+        messages = head_messages(view, system or SYSTEM_PROMPT)
+    else:
+        messages = head_messages(view, system or env.system_prompt, env.render_view)
     for _ in range(max_turns):
-        reply = model(messages, TOOL_SPECS)
+        reply = model(messages, tools)
         if reply.get("reasoning") and desk.recorder:
             desk.recorder.note(reply["reasoning"], source="reasoning")
         calls = reply.get("tool_calls") or []
@@ -27,5 +36,5 @@ def run(desk: Desk, view: dict, model, max_turns: int = 24, system: str = SYSTEM
             messages.append(final_message(text))
             return messages, "done"
         done = desk.call_many([(c["name"], c["arguments"]) for c in calls])
-        messages += turn_messages(done)
+        messages += turn_messages(done, specs)
     return messages, "max_turns"

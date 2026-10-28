@@ -8,6 +8,8 @@
 # prompt) and +memory:<records> (earlier records in the system prompt; MEMORY_K of them, default 30).
 # Server settings (M, QUANT, ADAPTERS, MAX_LEN, MAX_LORA_RANK) are those of scripts/serve.sh.
 # AFTER, if set, is a command run after the runs while the server is still up.
+# ENV picks the desk version the tickets are for (default quote-desk/1); PARALLEL works that many tickets of a
+# run at once (default 1).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=${1:?usage: serve_runs.sh <out dir>}
@@ -40,7 +42,7 @@ for run in $RUNS; do
         esac
     done
     .venv-serve/bin/python -m island.run_agent --tasks "$TASKS" --model "$model" --temperature "$TEMPERATURE" \
-        "${extra[@]}" --out "$OUT/$name" > "$OUT/$name.log" 2>&1 &
+        --env "${ENV:-quote-desk/1}" --parallel "${PARALLEL:-1}" "${extra[@]}" --out "$OUT/$name" > "$OUT/$name.log" 2>&1 &
     pids+=($!)
 done
 status=0

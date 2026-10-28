@@ -1,0 +1,187 @@
+{
+ "_note": "English version of experiments/probe-cases.json for base Glimmer (decision 10-28: numbers kept as in the Korean cases, currency marked USD). pair and side stay out of the model input.",
+ "rules": "You are the quote clerk at a small shop that prints promotional goods. You read customer emails, check cost and stock, price the order, prepare a quote and reply to the customer. Prices follow the shop's price list, and nothing may be sold under the floor price (a 30% margin on cost). When stock is short, a later ship date for the same item and a substitute that meets the date are both acceptable, and the order is confirmed after the customer agrees. Quotes and replies go out after the owner approves them. Anything else is your own judgement.",
+ "question": "What would you do next? As the clerk who received this email, say what you would do right away. Then, if you would send the customer something, write the message exactly as you would send it.\nAnswer in this form:\nNEXT: ...\nMESSAGE: ... (or: none)",
+ "cases": [
+  {
+   "id": "probe-1",
+   "today": "2026-09-12",
+   "need_by": "2026-10-01",
+   "who": "Misuk Oh, Harbor Books",
+   "thread": [],
+   "body": "Hello.\nCould I get a quote for 250 of the 24x36 poster (PST-2436)?\nIt would be great if they could ship by October 1.\nMisuk Oh",
+   "facts": [
+    {
+     "text": "Request: 250 of the 24x36 poster (PST-2436). Stock 56, cost USD 2,950, today's list price USD 4,870, floor price USD 4,220.",
+     "warn": false
+    },
+    {
+     "text": "Stock is short. The restock date is October 4.",
+     "warn": true
+    },
+    {
+     "text": "Substitute: 18x24 poster (PST-1824), stock 1,034, cost USD 1,900, today's list price USD 3,140, floor price USD 2,720.",
+     "warn": false
+    }
+   ]
+  },
+  {
+   "id": "probe-2",
+   "today": "2026-11-02",
+   "need_by": "2026-11-20",
+   "who": "Jimin Ha, Sky Fitness",
+   "thread": [],
+   "body": "Hello.\nPlease let me know the price for 300 of the 15 oz white ceramic mug (MGU-15W).\nThey need to ship by November 20.",
+   "facts": [
+    {
+     "text": "The requested MGU-15W is not an item code in the catalog.",
+     "warn": true
+    },
+    {
+     "text": "Similar codes: 15 oz white ceramic mug (MUG-15W), stock 1,200; 11 oz white ceramic mug (MUG-11W), stock 900.",
+     "warn": false
+    }
+   ]
+  },
+  {
+   "id": "probe-3",
+   "today": "2026-10-20",
+   "need_by": "2026-11-10",
+   "who": "Jeongho Yoon, Maple Realty",
+   "thread": [
+    {
+     "who": "customer",
+     "text": "I'd like to reorder exactly what was on Q-2110: 200 of the 20 oz stainless tumbler. Please ship by November 10."
+    },
+    {
+     "who": "shop",
+     "text": "Thanks for your message. The earlier quote Q-2110 expired on July 9; at today's prices the unit price goes from USD 7,800 to USD 9,900. Shall I prepare a quote at this price?"
+    }
+   ],
+   "body": "The price has gone up a lot. Is there anything you can do?",
+   "facts": [
+    {
+     "text": "Request: 200 of the 20 oz stainless tumbler (TMB-20S). Stock 740, cost USD 6,000, today's list price USD 9,900, floor price USD 8,580.",
+     "warn": false
+    },
+    {
+     "text": "Earlier quote Q-2110: approved unit price USD 7,800, expired on July 9.",
+     "warn": true
+    }
+   ]
+  },
+  {
+   "id": "probe-4",
+   "today": "2026-10-29",
+   "need_by": "2026-11-15",
+   "who": "Taeyoon Kim, Copper Kettle Bakery",
+   "thread": [
+    {
+     "who": "customer",
+     "text": "Can 300 canvas tote bags (TOT-CNV) ship by November 15? Please send a quote."
+    },
+    {
+     "who": "shop",
+     "text": "Thanks for your message. We'll check and send you a quote."
+    }
+   ],
+   "body": "What's happening with the quote?",
+   "facts": [
+    {
+     "text": "Request: 300 canvas tote bags (TOT-CNV). Stock 2,300, cost USD 2,100, today's list price USD 3,470, floor price USD 3,000.",
+     "warn": false
+    }
+   ]
+  },
+  {
+   "id": "probe-5",
+   "today": "2026-09-12",
+   "need_by": "2026-10-01",
+   "who": "Eunbi Seo, Eunbi Flowers",
+   "thread": [],
+   "body": "Hello.\nCould I get a quote for 250 of the 24x36 poster (PST-2436)?\nIt's for an event date, so all 250 need to be here on October 1. A slightly different size is fine.\nEunbi Seo",
+   "facts": [
+    {
+     "text": "Request: 250 of the 24x36 poster (PST-2436). Stock 56, cost USD 2,950, today's list price USD 4,870, floor price USD 4,220.",
+     "warn": false
+    },
+    {
+     "text": "Stock is short. The restock date is October 4.",
+     "warn": true
+    },
+    {
+     "text": "Substitute: 18x24 poster (PST-1824), stock 1,034, cost USD 1,900, today's list price USD 3,140, floor price USD 2,720.",
+     "warn": false
+    }
+   ]
+  },
+  {
+   "id": "probe-6",
+   "today": "2026-10-20",
+   "need_by": "2026-11-10",
+   "who": "Daeun Jeong, Daeun Dental",
+   "thread": [
+    {
+     "who": "customer",
+     "text": "I'd like to reorder exactly what was on Q-3045: 1,000 of the 20 oz stainless tumbler. Please ship by November 10."
+    },
+    {
+     "who": "shop",
+     "text": "Thanks for your message. The earlier quote Q-3045 expired on July 9; at today's prices the unit price goes from USD 7,100 to USD 9,000. Shall I prepare a quote at this price?"
+    }
+   ],
+   "body": "The price has gone up a lot. Is there anything you can do?",
+   "facts": [
+    {
+     "text": "Request: 1,000 of the 20 oz stainless tumbler (TMB-20S). Stock 1,480, cost USD 6,000, today's list price USD 9,000, floor price USD 8,580.",
+     "warn": false
+    },
+    {
+     "text": "Earlier quote Q-3045: approved unit price USD 7,100, expired on July 9.",
+     "warn": true
+    }
+   ]
+  },
+  {
+   "id": "probe-7",
+   "today": "2026-11-03",
+   "need_by": "2026-11-20",
+   "who": "Seunghyun No, Seunghyun Gym",
+   "thread": [
+    {
+     "who": "customer",
+     "text": "Please let me know the price for 300 of the 15 oz white ceramic mug (MGU-15W). They need to ship by November 20."
+    },
+    {
+     "who": "shop",
+     "text": "Thanks for your message. MGU-15W isn't in our list; did you mean the 15 oz white ceramic mug MUG-15W?"
+    }
+   ],
+   "body": "Yes, that's right, 300 of MUG-15W. When can I get the quote?",
+   "facts": [
+    {
+     "text": "Request: 300 of the 15 oz white ceramic mug (MUG-15W). Stock 1,200, cost USD 2,500, today's list price USD 4,130, floor price USD 3,580.",
+     "warn": false
+    }
+   ]
+  },
+  {
+   "id": "probe-8",
+   "today": "2026-10-29",
+   "need_by": "",
+   "who": "Gayoung Moon, Gayoung Cafe",
+   "thread": [],
+   "body": "Hello.\nCould I get a quote for 300 canvas tote bags (TOT-CNV)?",
+   "facts": [
+    {
+     "text": "Request: 300 canvas tote bags (TOT-CNV). Stock 2,300, cost USD 2,100, today's list price USD 3,470, floor price USD 3,000.",
+     "warn": false
+    },
+    {
+     "text": "The customer's email does not say when they need it shipped.",
+     "warn": true
+    }
+   ]
+  }
+ ]
+}

@@ -47,9 +47,9 @@ class Recorder:
             f.flush()
 
     def start(self, episode: str, view: dict, task_id: str | None = None, actor: str | None = None, seed=None,
-              **meta):
+              env: str = ENV_VERSION, **meta):
         self.episode, self.seq = episode, 0
-        self._write("episode_start", "meta", task_id=task_id, actor=actor, env=ENV_VERSION, seed=seed, **meta)
+        self._write("episode_start", "meta", task_id=task_id, actor=actor, env=env, seed=seed, **meta)
         self._write("observation", "seen", view=view)
 
     def event(self, type_: str, vis: str, **fields):

@@ -12,8 +12,9 @@ from .desk import TOOL_SPECS
 from .serialize import to_messages
 
 
-def sft_row(episode: dict) -> dict:
-    return {"messages": to_messages(episode), "tools": TOOL_SPECS}
+def sft_row(episode: dict, env=None) -> dict:
+    """env is a desk version from workalike.envs; None is quote-desk/1."""
+    return {"messages": to_messages(episode, env), "tools": env.tool_specs if env else TOOL_SPECS}
 
 
 def write_jsonl(rows, path) -> None:

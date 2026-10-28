@@ -15,7 +15,9 @@ worker, first match wins:
   match            right, and handled that worker's way
 Tickets are also counted in three groups: single conditions as in eval_h1, habit
 restraint as in eval_trap, and the dev-only combinations. Token counts are per ticket;
-runs that shared a server are not compared on seconds.
+runs that shared a server are not compared on seconds. --rescore scores each run again
+from its records.jsonl with today's scorer (token counts come from the stored scores),
+leaving the stored scores.jsonl as it was.
 """
 from __future__ import annotations
 
@@ -51,8 +53,12 @@ def sha(path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
 
 
-def load_run(folder: Path, by_id: dict) -> list[dict]:
+def load_run(folder: Path, by_id: dict, rescore: bool = False) -> list[dict]:
     rows = read_jsonl(folder / "scores.jsonl")
+    if rescore:
+        kept = {r["task_id"]: {k: r.get(k) for k in ("completion_tokens", "prompt_tokens", "seconds", "model_calls")}
+                for r in rows}
+        rows = [{**r, **kept.get(r["task_id"], {})} for r in score_records(folder / "records.jsonl", by_id)[0]]
     counts = Counter(r["task_id"] for r in rows)
     missing, extra = set(by_id) - set(counts), set(counts) - set(by_id)
     twice = {t for t, n in counts.items() if n > 1}
@@ -62,7 +68,7 @@ def load_run(folder: Path, by_id: dict) -> list[dict]:
     return [{**r, "family": by_id[r["task_id"]]["family"]} for r in rows]
 
 
-def report(tasks: list[dict], records_dir, runs: list[tuple[str, str | None, Path]]) -> dict:
+def report(tasks: list[dict], records_dir, runs: list[tuple[str, str | None, Path]], rescore: bool = False) -> dict:
     by_id = {t["task_id"]: t for t in tasks}
     paths = {s: Path(records_dir) / f"{s.lower()}-dev.jsonl" for s in ("A", "B")}
     refs = {s: {r["task_id"]: r for r in score_records(p, by_id)[0]} for s, p in paths.items()}
@@ -70,9 +76,9 @@ def report(tasks: list[dict], records_dir, runs: list[tuple[str, str | None, Pat
     out = {"inputs": {"tasks": len(tasks), "differ": len(split),
                       "hashes": {"tasks": hashlib.sha256(json.dumps(tasks, sort_keys=True).encode()).hexdigest()[:16],
                                  **{f"ref_{s}": sha(p) for s, p in paths.items()}}},
-           "runs": {}}
+           "rescored": rescore, "runs": {}}
     for name, style, folder in runs:
-        rows = load_run(folder, by_id)
+        rows = load_run(folder, by_id, rescore)
         summary = folder / "summary.json"
         settings = json.loads(summary.read_text()).get("settings") if summary.exists() else None
         per = []
@@ -109,6 +115,7 @@ def main() -> None:
     ap.add_argument("--tasks", required=True)
     ap.add_argument("--records", required=True, help="folder with the scripted a-dev.jsonl and b-dev.jsonl")
     ap.add_argument("--out", help="write the full report here as JSON")
+    ap.add_argument("--rescore", action="store_true", help="score again from each run's records with today's scorer")
     ap.add_argument("runs", nargs="+", help="name[:A|B]=folder")
     args = ap.parse_args()
     runs = []
@@ -116,7 +123,7 @@ def main() -> None:
         label, folder = spec.split("=", 1)
         name, _, style = label.partition(":")
         runs.append((name, style.upper() or None, Path(folder)))
-    result = report(read_jsonl(args.tasks), args.records, runs)
+    result = report(read_jsonl(args.tasks), args.records, runs, args.rescore)
     if args.out:
         Path(args.out).write_text(json.dumps(result, indent=1) + "\n")
     n, d = result["inputs"]["tasks"], result["inputs"]["differ"]

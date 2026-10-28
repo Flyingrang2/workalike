@@ -247,21 +247,23 @@ def empty_state(today: str) -> dict:
 class Desk:
     """Runs tools against a private copy of the state and reports every call to the recorder."""
 
-    def __init__(self, state: dict, recorder=None):
+    def __init__(self, state: dict, recorder=None, env=None):
         self.state = copy.deepcopy(state)
         self.recorder = recorder
+        self.specs = env.spec_by_name if env else SPEC_BY_NAME  # env: a desk version from workalike.envs
+        self.handlers = env.handlers if env else HANDLERS
         self.history: list[dict] = []  # every call made so far, as returned by call_many
         self._calls = 0
         self._turns = 0
 
     def run(self, name: str, args) -> dict:
-        spec = SPEC_BY_NAME.get(name)
+        spec = self.specs.get(name)
         if spec is None:
             return {"error": "unknown_tool", "name": name}
         problem = _args_error(spec["parameters"], args)
         if problem:
             return {"error": "invalid_arguments", "detail": problem}
-        return HANDLERS[name](self.state, **copy.deepcopy(args))
+        return self.handlers[name](self.state, **copy.deepcopy(args))
 
     def call_many(self, calls) -> list[dict]:
         """Run several calls made in one turn. Returns [{id, name, args, result}]."""
