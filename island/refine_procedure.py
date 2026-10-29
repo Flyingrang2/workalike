@@ -73,7 +73,8 @@ def main() -> None:
     ap.add_argument("--env", required=True, choices=sorted(BY_VERSION))
     ap.add_argument("--model", required=True)
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
-    ap.add_argument("--limit", type=int, default=10, help="most cases to show at once (context length)")
+    ap.add_argument("--limit", type=int, default=8, help="most cases to show at once (context length)")
+    ap.add_argument("--max-tokens", type=int, default=12000, help="room for the model's thinking and the procedure")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     env = BY_VERSION[args.env]
@@ -85,11 +86,12 @@ def main() -> None:
         print("no case differed; procedure unchanged")
         return
     user = f"Current procedure:\n{current}\n\n" + "\n\n---\n\n".join(f"Case {i}:\n{c}" for i, c in enumerate(shown, 1))
-    model = ChatModel(args.base_url, args.model, temperature=0, max_tokens=4096)
+    model = ChatModel(args.base_url, args.model, temperature=0, max_tokens=args.max_tokens)
     revised = (model([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], None).get("content")
                or "").strip()
     if not revised:
-        raise SystemExit("the model returned no procedure")
+        raise SystemExit(f"the model returned no procedure (finish reason {model.calls[-1].get('finish_reason')}, "
+                         f"usage {model.calls[-1].get('usage')})")
     Path(args.out).write_text(revised + "\n")
     Path(args.out).with_suffix(".json").write_text(json.dumps({
         "from": args.procedure, "run": args.run, "cases": len(shown), "words": len(revised.split()),

@@ -17,7 +17,8 @@ QUANT=fp8_per_channel bash scripts/serve.sh "$OUT/server.log" &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null; wait $SERVER 2>/dev/null || true' EXIT
 for _ in $(seq 180); do curl -sf localhost:8000/v1/models > /dev/null 2>&1 && break; sleep 10; done
-run() {  # name tasks procedure
+run() {  # name tasks procedure; a finished run (its summary written) is kept, so the script can resume
+    [ -f "$OUT/$1/summary.json" ] && return 0
     $PY -m island.run_agent --env quote-desk/2 --tasks "$2" --model muse-glimmer --temperature 0 --parallel 8 \
         --procedure "$3" --out "$OUT/$1" > "$OUT/$1.log" 2>&1
 }
@@ -25,12 +26,13 @@ report() {  # out tasks ref name=folder...
     local out=$1 tasks=$2 ref=$3; shift 3
     $PY -m island.report_v2 --tasks "$tasks" --ref "$ref" --out "$out" "$@"
 }
-$PY -m island.extract_procedure --records $REF --env quote-desk/2 --shuffle 11:curve:1 --limit 20 --chunk 8 \
-    --model muse-glimmer --out "$OUT/proc-v1.txt"
-run h20-v1 $H20 "$OUT/proc-v1.txt" & run h20-pA20 $H20 baselines/v2/c20-s1.argon2.txt & wait
+# Wait on the runs' own pids: a bare wait would also wait for the server, which never exits.
+[ -f "$OUT/proc-v1.txt" ] || $PY -m island.extract_procedure --records $REF --env quote-desk/2 --shuffle 11:curve:1 \
+    --limit 20 --chunk 8 --model muse-glimmer --out "$OUT/proc-v1.txt"
+run h20-v1 $H20 "$OUT/proc-v1.txt" & a=$!; run h20-pA20 $H20 baselines/v2/c20-s1.argon2.txt & b=$!; wait $a $b
 for r in 1 2; do
-    $PY -m island.refine_procedure --procedure "$OUT/proc-v$r.txt" --run "$OUT/h20-v$r" --ref $REF --tasks $H20 \
-        --env quote-desk/2 --model muse-glimmer --out "$OUT/proc-v$((r + 1)).txt"
+    [ -f "$OUT/proc-v$((r + 1)).txt" ] || $PY -m island.refine_procedure --procedure "$OUT/proc-v$r.txt" \
+        --run "$OUT/h20-v$r" --ref $REF --tasks $H20 --env quote-desk/2 --model muse-glimmer --out "$OUT/proc-v$((r + 1)).txt"
     run h20-v$((r + 1)) $H20 "$OUT/proc-v$((r + 1)).txt"
 done
 report "$OUT/report-h20.json" $H20 $REF v1="$OUT/h20-v1" v2="$OUT/h20-v2" v3="$OUT/h20-v3" pA20="$OUT/h20-pA20"
@@ -39,7 +41,9 @@ import json; r = json.load(open('$OUT/report-h20.json'))['runs']
 print(max(['v1', 'v2', 'v3'], key=lambda v: (r[v]['both'], r[v]['business_ok'], -int(v[1]))))")
 echo "final procedure: $BEST" | tee "$OUT/final.txt"
 cp "$OUT/proc-$BEST.txt" "$OUT/proc-final.txt"
-run dev2-final $D2 "$OUT/proc-final.txt" & run dev2-v1 $D2 "$OUT/proc-v1.txt" &
-run dev2-pA60 $D2 baselines/v2/c60-s1.argon2.txt & run dev2-pA20 $D2 baselines/v2/c20-s1.argon2.txt & wait
+pids=()
+run dev2-final $D2 "$OUT/proc-final.txt" & pids+=($!); run dev2-v1 $D2 "$OUT/proc-v1.txt" & pids+=($!)
+run dev2-pA60 $D2 baselines/v2/c60-s1.argon2.txt & pids+=($!); run dev2-pA20 $D2 baselines/v2/c20-s1.argon2.txt & pids+=($!)
+wait "${pids[@]}"
 report "$OUT/report-dev2.json" $D2 data/v2/records/c-dev2.jsonl final="$OUT/dev2-final" v1="$OUT/dev2-v1" \
     pA60="$OUT/dev2-pA60" pA20="$OUT/dev2-pA20"

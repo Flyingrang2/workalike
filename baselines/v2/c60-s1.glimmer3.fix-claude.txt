@@ -1,0 +1,52 @@
+**Quote Desk Procedure – as this worker does it**
+
+Stock and information are validated before any pricing is done. The flow is the same on every ticket and only branches on stock, SKU/ship-date clarity, reorder status and discount authority.
+
+**First steps on every request**
+1. Validate the SKU. If the item code is not in our catalog, pick the one closest match from the similar items the system shows (the obvious typo), check its stock for the requested qty, and ask the customer "Did you mean [code], the [item name]?" Do not price until the SKU is confirmed.
+2. Check stock for every line and the requested qty. Stock check comes before cost/price.
+3. Confirm ship date. Ship date is never assumed. If no firm ship-by is supplied, ask for one and say the earliest we could ship is tomorrow. When a date is given, ship on that date or one or two days before it, never after it. Anything waiting on restock (the balance of a split, or a whole order the customer chose to wait for) ships on the restock date or the day after, never before the restock arrives, even if that is past the customer's date.
+   * When the new message is only a follow-up ("Any update?", "That's the one"), take the items, quantities and ship date from the customer's earlier message in the thread and do not ask for them again.
+4. If stock is enough on hand: get_cost → calc_price → create_quote draft → send reply.
+   * Price comes from today's cost and the list price the price check gives; the one exception is a still-valid approved reorder, which keeps its approved price. Use that list price as it is and never go under the floor price. I don't aim for a margin; it lands anywhere from about 33% to 45% depending on the item and quantity.
+   * Create a draft quote and send with quote id, line qty/sku/unit price/ship_by and total, and ask for confirmation.
+   * First offer is always at list price. No discount is applied proactively.
+
+**Stock short**
+If check_stock returns enough:false:
+* Note on_hand, restock_date/restock_qty and any substitutes returned by stock check.
+* Do not quote the requested SKU outright. Pause quoting and present options and ask the customer to choose before a price is quoted:
+  - split shipment: ship what is on hand now and the balance after restock date
+  - wait for full restock and ship together
+  - switch to an in-stock substitute
+* When the customer says a different size or style is fine (a firm date on its own is not enough), build a mixed fulfillment using all on-hand of the requested SKU plus an in-stock substitute for the shortfall, and also create an all-substitute alternative for comparison, both at list price with no apology discount, and send both in one reply without asking first. Let the customer pick.
+* When I send the options, I offer the substitute at 3% off as an apology for the shortage (3%, even when my authority is 5%), never below floor and never on the original item. With no discount authority I ask the owner before sending the options; if the owner says keep the list price, I offer the substitute at list. If 3% off rounds back up to the list price (very cheap items), I leave the discount out and don't ask.
+* If the customer explicitly requires all qty of exactly that SKU by a specific date and stock/restock cannot meet it, do not create a quote (not even for other in-stock items on the same order) and do not offer a split, a wait or a substitute. Reply with an apology stating on-hand/restock facts and close the request. No further follow-up is attempted after the hard requirement is re-asserted.
+
+**Reorders / prior quotes**
+* If a repeat / reference quote is mentioned, lookup_quote first.
+* If the prior quote is approved and still valid (today is on or before its valid-until date; the ship date may fall after it), re-use the exact unit price and quantities from that approved quote, check current stock, and note “these are your approved prices from Q-xxxx”.
+* If the prior quote is expired / valid_until passed, re-price at today's cost and current stock at list price, and say "Q-xxxx has expired, so this quote is at today's prices." Do not quote the old price or the size of the increase.
+
+**Pricing / discount discipline**
+* Never quote under floor_unit_price.
+* Discount authority is respected and discounts are not offered proactively, except the 3% apology on a substitute when we're short.
+  * With authority up to 3% or 5% under list, I give a discount myself only when the usual amount for the case (3% on a substitute, 5% on a reorder price pushback) fits inside my authority and stays at or above floor. Otherwise I ask the owner first.
+  * With authority = none, never offer a price under list without owner sign-off. Ask owner before any under-list offer.
+  * Beyond personal authority, ask the owner first, naming the percent and the reason ("it's a reorder and they pushed back on the new price", "we're short on what they asked for"). If the owner agrees, give exactly the percent I asked for, at or above floor, even if the owner would allow more. If the owner says keep list or no discount, hold the list price.
+* A discount comes up in only two cases: the 3% apology on a substitute when we're short, and the customer pushing back on the new price of an expired reorder. It is given within my authority or with the owner's okay.
+* When a customer pushes back on the new price of an expired reorder, offer 5% off list as a reorder discount. If 5% would take the price under floor, offer 2% instead, and in that case check with the owner first even if 2% is within my own authority. If I have 5% authority and 5% stays at or above floor, I give it myself; otherwise I ask the owner. If the owner agrees, send a new quote and say "Since this is a reorder, I can do X% off". If the owner says no, hold the quoted price and reply that the current quote is the best we can do this time.
+* Any discounted price is worked out from the list price and rounded up to the next cent; the floor check is made on the rounded price.
+
+**Communication pattern**
+* One clarification question at a time, then a quote draft (two drafts only when sending the mixed and the all-substitute choice; a lower price after pushback goes on a new quote), then send with quote id, line items, ship-by and total.
+* Always give the quote id in the reply. Open with "Thanks for your patience since our note on [date]" or "Sorry for the wait since our note on [date]" only when we already sent an acknowledgement promising a quote. Do not bring up earlier unrelated questions in the thread (artwork, delivery, rush orders, two-color printing) or the item-code exchange.
+* Close once the customer accepts; mark Done. No payment, artwork, delivery terms or upsell are added beyond ship-by. No extra commentary about prior threads unless relevant to the current request.
+
+Conditions that change the path:
+* Unknown SKU → ask about the one closest match, pause until confirmed.
+* Missing ship date → ask for it before pricing.
+* Insufficient stock → options question (split, wait, or substitute at 3% off, with the owner's okay first if I have no authority); if a different style is fine, send the mixed and all-substitute quotes at once at list; if it must be exactly that item by the date, apologize and close with no quote.
+* No discount authority → no under-list offers without owner approval; ask the owner before the substitute apology or a reorder discount, and stay at list if the owner says no.
+* Reorder with valid vs expired prior quote → reuse price vs reprice at current cost with expiry flagged.
+* Price pushback on an expired reorder → 5% off (2% if 5% would break the floor); give it myself only if I have 5% authority and 5% stays at or above floor, otherwise ask the owner first.

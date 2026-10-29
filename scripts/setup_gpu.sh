@@ -33,7 +33,11 @@ uv pip install -q --python .venv-serve/bin/python vllm playwright
 
 echo "== model"
 mkdir -p "$(dirname "$MODEL_DIR")"
-.venv-train/bin/hf download meta-models/Muse-Glimmer-30B --local-dir "$MODEL_DIR"
+# Plain HTTP: the xet backend stalled at about 150 KB/s on 10-29 while plain downloads ran near 280 MB/s.
+# If the download fails, copy the backup kept on the EBS volume (about 125 MB/s).
+BACKUP=${MODEL_BACKUP:-${BACKUP_DIR:-$HOME/backup}/models/glimmer}
+HF_HUB_DISABLE_XET=1 .venv-train/bin/hf download meta-models/Muse-Glimmer-30B --local-dir "$MODEL_DIR" \
+  || { [ -f "$BACKUP/config.json" ] && rsync -a --exclude .cache "$BACKUP/" "$MODEL_DIR/"; }
 du -sh "$MODEL_DIR"
 
 echo "== data"

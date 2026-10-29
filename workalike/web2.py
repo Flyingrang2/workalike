@@ -111,6 +111,17 @@ ERRORS = {"unknown_quote": "그런 견적 번호가 없습니다", "unknown_tick
           "too_many_lines": "견적 줄이 너무 많습니다", "too_many_lines_for_item": "한 품목은 두 줄까지만 나눌 수 있습니다"}
 
 
+def ship_when_ko(r: dict) -> str:
+    """When a short item can ship, the line a person asked for (10-29: a clerk stopped not knowing the date)."""
+    now, short = r["on_hand"], r["qty"] - r["on_hand"]
+    if not r.get("restock_date"):
+        return f"출고 가능: 지금 {now:,}개뿐이고, 나머지 {short:,}개는 재입고 예정이 없어 날짜를 약속할 수 없습니다."
+    if r["restock_qty"] >= short:
+        return f"출고 가능: 지금 {now:,}개, 나머지 {short:,}개는 재입고일 {r['restock_date']}부터."
+    return (f"출고 가능: 지금 {now:,}개, 재입고일 {r['restock_date']}부터 {r['restock_qty']:,}개 더. "
+            f"재입고 뒤에도 {short - r['restock_qty']:,}개가 모자랍니다.")
+
+
 def describe_ko(name: str, args: dict, r: dict, ko_answer=None) -> str:
     """A result in the words a Korean-speaking clerk would read."""
     if "error" in r:
@@ -126,15 +137,18 @@ def describe_ko(name: str, args: dict, r: dict, ko_answer=None) -> str:
         status = "아직 유효합니다" if r["status"] == "approved" else "만료됐습니다"
         lines = "; ".join(f"{l['sku']}({l['name']}) {l['qty']:,}개, 승인 단가 {_money(l['unit_price'])}" for l in r["lines"])
         return f"견적 {r['quote_id']}: 유효기한 {r['valid_until']}, {status}. {lines}."
+    if name == "search_catalog":
+        found = ", ".join(f"{i['sku']}({i['name']})" for i in r["items"]) or "없음"
+        return f"'{r['query']}' 검색: {found}." + (f" 그 밖에 {r['more']}개." if r["more"] else "")
     if name == "get_cost":
         return f"{r['sku']}({r['name']}) 원가 {_money(r['unit_cost'])} ({r['as_of']} 기준)."
     if name == "check_stock":
         text = f"{r['sku']}({r['name']}) {r['qty']:,}개 필요, 재고 {r['on_hand']:,}개: "
         if r["enough"]:
-            return text + "충분합니다."
+            return text + "충분합니다. 지금 재고로 바로 출고할 수 있습니다."
         restock = (f"재입고 {r['restock_date']}에 {r['restock_qty']:,}개" if r.get("restock_date") else "재입고 예정 없음")
         subs = ", ".join(f"{s['sku']}({s['name']}, 재고 {s['on_hand']:,}개)" for s in r["substitutes"]) or "없음"
-        return text + f"부족합니다. {restock}. 재고 있는 대체품: {subs}."
+        return text + f"부족합니다. {restock}. {ship_when_ko(r)} 재고 있는 대체품: {subs}."
     if name == "calc_price":
         return (f"{r['sku']} {r['qty']:,}개, 원가 {_money(r['unit_cost'])}: 가격표 단가 {_money(r['unit_price'])}, "
                 f"합계 {_money(r['line_total'])}, 최저 허용 단가 {_money(r['floor_unit_price'])}.")
@@ -160,6 +174,8 @@ def form_to_call(form: dict[str, str], ticket_id: str) -> tuple[str, dict]:
     f = {k: v.strip() for k, v in form.items()}
     if tool == "lookup_quote":
         return tool, {"quote_id": f.get("quote_id", "")}
+    if tool == "search_catalog":
+        return tool, {"query": f.get("query", "")}
     if tool == "get_cost":
         return tool, {"sku": f.get("sku", "")}
     if tool == "check_stock":
@@ -197,14 +213,54 @@ button.quiet{background:#fff;color:#2f4a6d}.finish{background:#1a7f37;border-col
 """
 
 
+# Korean a clerk might type into the catalog search, to the English word item names use (10-29). A search the
+# glossary covers needs no translator call, so it answers at once; anything else still goes to the translator.
+SEARCH_KO = {
+    "알루미늄": "aluminum", "가방": "bag", "대나무": "bamboo", "배너": "banner", "현수막": "banner", "비니": "beanie",
+    "검정": "black", "블랙": "black", "버킷": "bucket", "벙거지": "bucket", "명함": "business", "달력": "calendar",
+    "캠핑": "camp", "캔버스": "canvas", "캡": "cap", "모자": "cap", "차량": "car", "자동차": "car", "세라믹": "ceramic",
+    "도자기": "ceramic", "투명": "clear", "골판지": "corrugated", "면": "cotton", "코튼": "cotton", "다이컷": "die-cut",
+    "조리개": "drawstring", "스트링": "drawstring", "법랑": "enamel", "에나멜": "enamel", "전단": "flyer",
+    "전단지": "flyer", "플라이어": "flyer", "냉장고": "fridge", "젤": "gel", "유광": "gloss", "하드커버": "hardcover",
+    "양장": "hardcover", "후드": "hoodie", "후디": "hoodie", "황마": "jute", "주트": "jute", "어린이": "kids",
+    "아동": "kids", "니트": "knit", "라벨": "label", "스티커라벨": "label", "라떼": "latte", "레터": "letter",
+    "긴팔": "long-sleeve", "자석": "magnet", "마그넷": "magnet", "무광": "matte", "매트": "matte", "메쉬": "mesh",
+    "메시": "mesh", "메탈": "metal", "금속": "metal", "머그": "mug", "머그컵": "mug", "부직포": "non-woven",
+    "노트": "notebook", "수첩": "notebook", "공책": "notebook", "타원": "oval", "펜": "pen", "볼펜": "pen",
+    "플라스틱": "plastic", "포켓": "pocket", "포스터": "poster", "프리미엄": "premium", "인쇄": "print",
+    "액자": "print", "풀오버": "pullover", "롤": "roll", "원형": "round", "간판": "sign", "표지판": "sign",
+    "스프링": "spiral", "사각": "square", "정사각": "square", "스탠다드": "standard", "기본": "standard",
+    "스틸": "steel", "스테인리스": "steel", "스티커": "sticker", "티셔츠": "t-shirt", "티": "t-shirt",
+    "토트": "tote", "에코백": "tote", "혼방": "tri-blend", "트러커": "trucker", "텀블러": "tumbler", "트윌": "twill",
+    "브이넥": "v-neck", "진공": "vacuum", "보온": "vacuum", "비닐": "vinyl", "흰": "white", "흰색": "white",
+    "화이트": "white", "입간판": "yard", "지퍼": "zip", "집업": "zip",
+}
+
+
+def glossary_term(ko: str) -> str | None:
+    """English search words for Korean the glossary fully covers, else None."""
+    out = []
+    for word in ko.split():
+        if not HANGUL.search(word):
+            out.append(word)
+        elif word in SEARCH_KO:
+            out.append(SEARCH_KO[word])
+        else:
+            return None
+    return " ".join(out)
+
+
 class KoreanDesk:
     """Serves one quote-desk/2 ticket at a time to a Korean-speaking person; Finish moves to the next."""
 
-    def __init__(self, sessions: list[dict], recorder: Recorder, korean: Korean, translate):
+    def __init__(self, sessions: list[dict], recorder: Recorder, korean: Korean, translate, translate_term=None,
+                 badge=None):
+        self.badge = badge  # optional: a function giving HTML for the header (the product loop's recording switch)
         self.queue = list(sessions)
         self.recorder = recorder
         self.korean = korean
         self.translate = translate
+        self.translate_term = translate_term or translate  # Korean typed into the catalog search
         self.token = secrets.token_urlsafe(16)
         self.lock = threading.Lock()
         self.current, self.desk, self.log, self.finished, self.draft = None, None, [], [], None
@@ -221,6 +277,17 @@ class KoreanDesk:
 
     def act(self, form: dict[str, str]) -> None:
         name, args = form_to_call(form, self.current["view"]["ticket_id"])
+        if name == "search_catalog" and HANGUL.search(args["query"]):  # the desk's catalog is in English
+            ko = args["query"]
+            term = glossary_term(ko)
+            if term is not None:
+                args["query"], who = term, "glossary"
+            else:
+                try:
+                    args["query"], who = self.translate_term(ko)
+                except Exception as e:
+                    args["query"], who = "", f"translator failed: {type(e).__name__}"
+            self.recorder.event("translation", "private", kind="search", ko=ko, en=args["query"], translator=who)
         self.log.insert(0, self.desk.call_many([(name, args)])[0])
 
     def make_draft(self, form: dict[str, str]) -> None:
@@ -295,8 +362,8 @@ class KoreanDesk:
                    + f"\n{v['body']}")
         return (f"<div class='card ticket'><h2>티켓 {e(v['ticket_id'])} · {e(ko.get('who', v['from']))}</h2>"
                 f"<div class='facts'>{e(authority)}<br>지금까지 이 손님에게 보낸 것: {e(sent)}</div>"
-                f"<h2>새 메일</h2><div class='body'>{e(ko.get('body', v['body']))}</div>"
-                + (f"<h2>앞서 오간 메일</h2>{thread}" if thread else "")
+                + (f"<h2>앞서 오간 메일 (오래된 것이 위)</h2>{thread}" if thread else "")
+                + f"<h2>새 메일</h2><div class='body'>{e(ko.get('body', v['body']))}</div>"
                 + f"<details><summary>영어 원문 보기</summary><div class='en'>{e(english)}</div></details></div>")
 
     def _log(self) -> str:
@@ -325,7 +392,8 @@ class KoreanDesk:
         head = (f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>견적 데스크</title>"
                 f"<style>{CSS}</style></head><body>")
         if not self.current:
-            return head + "<header><b>견적 데스크</b></header><main><div class='card'>남은 티켓이 없습니다. 수고하셨습니다.</div></main>"
+            return (head + "<header><b>견적 데스크</b>" + (self.badge() if self.badge else "") + "</header>"
+                    "<main><div class='card'>남은 티켓이 없습니다. 수고하셨습니다.</div></main>")
         v = self.current["view"]
         token = f"<input type='hidden' name='csrf' value='{self.token}'>"
 
@@ -352,6 +420,8 @@ class KoreanDesk:
         forms = (
             draft
             + form("/act", [("lookup_quote", "견적 찾기")], "<h2>지난 견적</h2>" + inp("quote_id", "견적 번호"))
+            + form("/act", [("search_catalog", "찾기")],
+                   "<h2>품목 검색</h2>" + inp("query", "품명이나 품번(한국어 가능, 비우면 전체)"))
             + form("/act", [("get_cost", "원가 보기"), ("check_stock", "재고 보기")],
                    "<h2>품목</h2>" + inp("sku", "품번") + inp("qty", "수량", "short"))
             + form("/act", [("calc_price", "가격 계산")],
@@ -368,6 +438,6 @@ class KoreanDesk:
         )
         left = len(self.queue) + 1
         return (head + f"<header><b>견적 데스크</b><span>오늘 {e(v['today'])}</span><span>이 티켓 포함 {left}건 남음</span>"
-                f"<form method='post' action='/finish'>{token}<button class='finish'>이 티켓 끝내기</button></form></header>"
+                + (self.badge() if self.badge else "") + f"<form method='post' action='/finish'>{token}<button class='finish'>이 티켓 끝내기</button></form></header>"
                 f"<main><div class='col'>{self._ticket()}<div class='card log'><h2>한 일 (최근 것이 위)</h2>{self._log()}</div></div>"
                 f"<div class='grid'>{forms}</div></main></body></html>")

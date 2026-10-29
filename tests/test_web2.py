@@ -104,3 +104,23 @@ def test_translation_check_reads_months_and_codes():
     assert translation_problems("MUG-15W 300개를 11월 20일까지, 견적 Q-12-1", "300 MUG-15W by Nov 20, quote Q-12-1") == []
     assert translation_problems("MUG-15W 300개", "300 MUG-11W")
     assert translation_problems("$4.08에", "at $4.80")
+
+
+def test_catalog_search_glossary_covers_korean_words():
+    from workalike.web2 import glossary_term
+    assert glossary_term("황마") == "jute" and glossary_term("흰색 머그") == "white mug"
+    assert glossary_term("MUG-11W") == "MUG-11W" and glossary_term("모르는말") is None
+
+
+def test_a_short_item_says_when_it_can_ship():
+    from workalike.web2 import describe_ko
+    base = {"sku": "TSH-PRM", "name": "premium cotton t-shirt", "qty": 225, "on_hand": 113, "enough": False,
+            "substitutes": []}
+    filled = describe_ko("check_stock", {}, {**base, "restock_date": "2026-10-03", "restock_qty": 450})
+    assert "지금 113개, 나머지 112개는 재입고일 2026-10-03부터" in filled
+    still = describe_ko("check_stock", {}, {**base, "restock_date": "2026-10-03", "restock_qty": 50})
+    assert "2026-10-03부터 50개 더" in still and "재입고 뒤에도 62개가 모자랍니다" in still
+    none = describe_ko("check_stock", {}, {**base, "restock_date": None, "restock_qty": 0})
+    assert "재입고 예정이 없어" in none
+    enough = describe_ko("check_stock", {}, {**base, "qty": 100, "enough": True})
+    assert "바로 출고할 수 있습니다" in enough

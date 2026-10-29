@@ -83,3 +83,22 @@ def group_episodes(events) -> dict[str, list[dict]]:
     for event in events:
         episodes.setdefault(event["ep"], []).append(event)
     return episodes
+
+
+class RecordSwitch:
+    """A recorder the person can switch off. The switch applies from the next episode, so no episode is ever
+    half-recorded: start() decides for the whole episode, and every later call follows that decision."""
+
+    def __init__(self, recorder: Recorder, on: bool = True):
+        self.recorder, self.on, self.live = recorder, on, False
+
+    def start(self, *args, **kwargs):
+        self.live = self.on
+        if self.live:
+            self.recorder.start(*args, **kwargs)
+
+    def __getattr__(self, name):
+        method = getattr(self.recorder, name)
+        if not callable(method):
+            return method
+        return lambda *a, **k: method(*a, **k) if self.live else None

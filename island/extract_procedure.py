@@ -85,7 +85,7 @@ def main() -> None:
                                   capture_output=True, text=True, check=True, timeout=900).stdout.strip()
         who = args.command
     else:
-        model = ChatModel(args.base_url, args.model, temperature=0, max_tokens=4096)
+        model = ChatModel(args.base_url, args.model, temperature=0, max_tokens=12000)
 
         def ask(system, user):
             return (model([{"role": "system", "content": system}, {"role": "user", "content": user}], None)

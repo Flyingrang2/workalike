@@ -205,7 +205,8 @@ class WebDesk:
 
 
 def make_server(webdesk, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
-    """Serve any page object with .token, .page(), .status() and .post(path, form), local requests only."""
+    """Serve any page object with .token, .page(), .status() and .post(path, form), local requests only.
+    Optional .page_for(path) serves pages by path, and .after_post(path) says where a post returns to."""
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="text/html; charset=utf-8"):
             data = body.encode()
@@ -227,7 +228,8 @@ def make_server(webdesk, host: str = "127.0.0.1", port: int = 8765) -> Threading
                 return self._send(403, "forbidden")
             if self.path == "/status":
                 return self._send(200, json.dumps(webdesk.status()), "application/json")
-            return self._send(200, webdesk.page())
+            page_for = getattr(webdesk, "page_for", None)  # an object with several pages routes by path
+            return self._send(200, page_for(self.path) if page_for else webdesk.page())
 
         def do_POST(self):
             length = int(self.headers.get("Content-Length", 0))
@@ -235,8 +237,9 @@ def make_server(webdesk, host: str = "127.0.0.1", port: int = 8765) -> Threading
             if not self._local() or not secrets.compare_digest(form.get("csrf", ""), webdesk.token):
                 return self._send(403, "forbidden")
             webdesk.post(self.path, form)
+            after = getattr(webdesk, "after_post", None)
             self.send_response(303)
-            self.send_header("Location", "/")
+            self.send_header("Location", after(self.path) if after else "/")
             self.end_headers()
 
         def log_message(self, *args):

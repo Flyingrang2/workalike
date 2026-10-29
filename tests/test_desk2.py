@@ -136,4 +136,13 @@ def test_versions_keep_their_own_tools_prompt_and_screen():
     ep = {"view": view, "turns": [], "final": "Done."}
     v2, v1 = sft_row(ep, V2), sft_row({**ep, "view": {k: view[k] for k in ("today", "ticket_id", "from", "body")}})
     assert v2["messages"][0]["content"] == V2.system_prompt and v1["messages"][0]["content"] == V1.system_prompt
-    assert {t["function"]["name"] for t in v2["tools"]} - {t["function"]["name"] for t in v1["tools"]} == {"ask_owner"}
+    assert {t["function"]["name"] for t in v2["tools"]} - {t["function"]["name"] for t in v1["tools"]} == \
+        {"ask_owner", "search_catalog"}
+
+
+def test_search_catalog_finds_words_in_names_and_codes():
+    d = Desk(state(), env=V2)
+    names = {i["sku"] for i in d.call("search_catalog", {"query": "Poster"})["items"]}
+    assert names and all("PST" in s or "poster" in state()["catalog"][s]["name"] for s in names)
+    assert d.call("search_catalog", {"query": "no such thing"})["items"] == []
+    assert len(d.call("search_catalog", {"query": ""})["items"]) == min(60, len(state()["catalog"]))

@@ -56,6 +56,9 @@ TOOL_SPECS = [
     _fn("lookup_quote",
         "Look up an earlier quote by id: its status, the date it is valid until, and its lines.",
         {"quote_id": {"type": "string"}}, ["quote_id"]),
+    _fn("search_catalog",
+        "Search the catalog by words in an item's name or code, e.g. 'jute' or 'tote'. Empty lists every item.",
+        {"query": {"type": "string"}}, ["query"]),
     _fn("get_cost",
         "Get the current unit cost of a catalog item.",
         {"sku": _SKU}, ["sku"]),
@@ -102,6 +105,14 @@ def _unknown_sku(state, sku):
     return {"error": "unknown_sku", "sku": sku,
             "similar": [{"sku": s, "name": state["catalog"][s]["name"], "on_hand": state["catalog"][s]["on_hand"]}
                         for s in names]}
+
+
+def search_catalog(state, query):
+    """Items whose code or name holds every word of the query (a person asked for it, 10-29)."""
+    words = [w for w in re.split(r"[\s,]+", query.lower()) if w]
+    hits = sorted(s for s, it in state["catalog"].items() if all(w in f"{s} {it['name']}".lower() for w in words))
+    return {"query": query, "items": [{"sku": s, "name": state["catalog"][s]["name"]} for s in hits[:60]],
+            "more": max(0, len(hits) - 60)}
 
 
 def check_stock(state, sku, qty):
@@ -304,6 +315,7 @@ def send_reply(state, ticket_id, message, quote_id=None):
 
 HANDLERS = {
     "lookup_quote": lookup_quote,
+    "search_catalog": search_catalog,
     "get_cost": get_cost,
     "check_stock": check_stock,
     "calc_price": calc_price,

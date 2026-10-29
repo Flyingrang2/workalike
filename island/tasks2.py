@@ -79,7 +79,7 @@ TWINS = {"typo_open": "typo_confirmed", "short_open": "short_constrained", "reor
 TWIN_PAIRS = {"train": 4, "dev": 3, "eval": 2, "dev2": 4, "train150": 4}
 PAIRS_PER_TYPE = {"dev2": 3, "train150": 5}  # twin pairs of each type; one where a split is not listed
 TICKET_RANGES = {"train": (1000, 49999), "dev": (100000, 199999), "eval": (50000, 99999), "dev2": (200000, 299999),
-                 "train150": (300000, 399999)}
+                 "train150": (300000, 399999), "demo": (400000, 449999)}  # demo: the product loop's cases
 # The sets made with seed 11. They do not change once a person has worked them. One change was made before
 # any person or any model saw them beyond a first base run on dev (10-28): the owner's fixed answer now
 # also leaves anything else to the clerk (first hashes 7f684edf, ff16727f, d9e986fd).
@@ -204,13 +204,17 @@ class Builder:
         flags = set() if family == "standard" else set(family.split("+"))
         base = base or self.base()
         rng = random.Random(base["seed"])  # a twin replays the same draws up to its condition
+        # Wording, names of things and quote ids come from t. Given a text_seed, a twin keeps every number of its
+        # pair and reads differently, so a person does not meet the same email twice (the human sheet, 10-29).
+        t = random.Random(base["text_seed"]) if "text_seed" in base else rng
+        says_text, constraint_text = getattr(self, "says", SAYS), getattr(self, "constraint_text", CONSTRAINT_TEXT)
         today, first, need_by = base["today"], base["first"], base["need_by"]
         state = empty_state(today.isoformat())
         state["catalog"] = cat = {k: dict(v, substitutes=list(v["substitutes"])) for k, v in base["catalog"].items()}
         ticket = self.ticket_id()
         state["tickets"].append(ticket)
         state["authority"][ticket] = base["authority"]
-        state["owner"][ticket] = {"policy": base["owner"], "says": rng.choice(OWNER[base["owner"]])}
+        state["owner"][ticket] = {"policy": base["owner"], "says": t.choice(OWNER[base["owner"]])}
 
         saved = self.rng
         self.rng = rng
@@ -219,8 +223,8 @@ class Builder:
         written = {s: s for s, _ in items}
         thread = []
         if base["smalltalk"]:
-            q, a = rng.choice(THREAD_SMALLTALK)
-            d = (today - timedelta(days=rng.randint(3, 20))).isoformat()
+            q, a = t.choice(THREAD_SMALLTALK)
+            d = (today - timedelta(days=t.randint(3, 20))).isoformat()
             thread = [{"date": d, "who": "customer", "text": q}, {"date": d, "who": "shop", "text": a}]
         request = {"first_name": first, "items": None, "quote_ref": None, "need_by": need_by.isoformat(),
                    "constraint": None, "acked_on": None, "confirmed": False}
@@ -244,31 +248,32 @@ class Builder:
                                "substitutes": subs}
             if "short_open" in flags:
                 pref = rng.choice(["split", "later", "substitute"])
+                pref = base.get("pref", pref)
                 sub = subs[0]  # the first substitute check_stock lists, the one a worker would offer
                 fill.update(sub=sub, sub_name=cat[sub]["name"])
                 customer["wants"][0]["substitutes"] = [sub]
                 customer.update(split_ok=pref in ("split", "later"), later_ok=pref == "later",
                                 substitute_ok=pref == "substitute")
-                sentences.append(rng.choice(SAYS[pref]).format(**fill))
+                sentences.append(t.choice(says_text[pref]).format(**fill))
                 grader["short"]["preference"] = pref
             elif "short_constrained" in flags:
                 customer.update(split_ok=False, later_ok=False, substitute_ok=True)
                 request["constraint"] = "any_style_all_by_date"
-                sentences.append(rng.choice(SAYS["constrained"]).format(**fill))
+                sentences.append(t.choice(says_text["constrained"]).format(**fill))
             else:
                 customer.update(split_ok=False, later_ok=False, substitute_ok=False)
                 request["constraint"] = "exact_all_by_date"
                 grader["feasible"] = False
-                sentences.append(rng.choice(SAYS["impossible"]).format(**fill))
+                sentences.append(t.choice(says_text["impossible"]).format(**fill))
         if flags & {"typo_open", "typo_confirmed"}:
             sku = items[0][0]
-            written[sku] = _typo(sku, state, rng)
+            written[sku] = _typo(sku, state, t)
             fill.update(sku=sku, name=cat[sku]["name"], typo=written[sku], qty=items[0][1])
             if "typo_open" in flags:
-                sentences.insert(0, rng.choice(SAYS["typo"]).format(**fill))
+                sentences.insert(0, t.choice(says_text["typo"]).format(**fill))
         if flags & REORDER:
             sku, qty = items[0]
-            qref = f"Q-{rng.randint(100, 9999)}"
+            qref = f"Q-{t.randint(100, 9999)}"
             if "reorder_valid" in flags:
                 price = unit_price_for(cat[sku]["unit_cost"] * rng.uniform(0.95, 1.03), qty)
                 price = max(price, floor_price(cat[sku]["unit_cost"]))
@@ -284,38 +289,38 @@ class Builder:
             fill["qref"] = qref
 
         item_lines = None if flags & REORDER else [
-            rng.choice(self.pool["item"]).format(qty=q, name=cat[s]["name"], sku=written[s]) for s, q in items]
+            t.choice(self.pool["item"]).format(qty=q, name=cat[s]["name"], sku=written[s]) for s, q in items]
         stated = next(iter(flags & set(CONSTRAINT_TEXT)), None)
-        body = self.body(rng, first, item_lines, None if "missing_date" in flags else need_by,
-                         rng.choice(self.pool["reorder"]).format(qref=fill["qref"]) if flags & REORDER else None,
-                         rng.choice(CONSTRAINT_TEXT[stated]).format(**fill) if stated else None)
+        body = self.body(t, first, item_lines, None if "missing_date" in flags else need_by,
+                         t.choice(self.pool["reorder"]).format(qref=fill["qref"]) if flags & REORDER else None,
+                         t.choice(constraint_text[stated]).format(**fill) if stated else None)
         sent_so_far = None
         if "missing_date" in flags:
             request["need_by"] = None
-            sentences.append(rng.choice(SAYS["date"]).format(**fill))
+            sentences.append(t.choice(says_text["date"]).format(**fill))
         if "typo_confirmed" in flags:
-            asked = (today - timedelta(days=rng.randint(1, 3))).isoformat()
+            asked = (today - timedelta(days=t.randint(1, 3))).isoformat()
             thread += [{"date": asked, "who": "customer", "text": body},
                        {"date": asked, "who": "shop", "text": CONFIRM_ASK.format(**fill)}]
-            body = rng.choice(CONFIRM_YES).format(**fill)
+            body = t.choice(CONFIRM_YES).format(**fill)
             if request["constraint"]:
-                body += " " + rng.choice(CONSTRAINT_TEXT["short_constrained"]).format(**fill)
+                body += " " + t.choice(constraint_text["short_constrained"]).format(**fill)
             request["confirmed"] = True
             sent_so_far = f"a question about the item code on {asked}; no quote yet"
         if "ack_followup" in flags:
-            sent = (today - timedelta(days=rng.randint(1, 4))).isoformat()
+            sent = (today - timedelta(days=t.randint(1, 4))).isoformat()
             thread += [{"date": sent, "who": "customer", "text": body},
-                       {"date": sent, "who": "shop", "text": rng.choice(COLLEAGUE_ACKS).format(first=first)}]
-            body = rng.choice(self.pool["followup"])
+                       {"date": sent, "who": "shop", "text": t.choice(COLLEAGUE_ACKS).format(first=first)}]
+            body = t.choice(self.pool["followup"])
             request["acked_on"] = sent
             sent_so_far = f"an acknowledgement on {sent}; no quote yet"
         if not flags & REORDER:
             request["items"] = [{"sku": s if request["confirmed"] else written[s], "qty": q} for s, q in items]
 
-        says = {"answer": " ".join(sentences) or rng.choice(SAYS["plain"]),
+        says = {"answer": " ".join(sentences) or t.choice(says_text["plain"]),
                 "decline": "That won't work for us. " + (" ".join(sentences) or "It isn't what we asked for.")}
         if flags & {"reorder_room", "reorder_tight"}:
-            says["push_back"] = rng.choice(SAYS["push_back"]).format(**fill)
+            says["push_back"] = t.choice(says_text["push_back"]).format(**fill)
         customer["says"] = says
         state["customers"][ticket] = customer
         grader["wants"] = customer["wants"]

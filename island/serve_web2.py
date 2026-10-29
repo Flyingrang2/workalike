@@ -39,7 +39,8 @@ def main() -> None:
     done = keep_finished(out / "records.jsonl")
     todo = [t for t in tasks if t["task_id"] not in done]
     desk = KoreanDesk(sessions_for(todo, args.actor), Recorder(out / "records.jsonl"),
-                      Korean(json.loads(Path(args.korean).read_text())), command_translator(args.translator))
+                      Korean(json.loads(Path(args.korean).read_text())), command_translator(args.translator),
+                      command_translator(args.translator + " --term"))
     server = make_server(desk, port=args.port)
     print(f"http://127.0.0.1:{args.port}  ({len(todo)} tickets to go, {len(tasks) - len(todo)} already finished, "
           "Ctrl+C to stop)", flush=True)
