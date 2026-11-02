@@ -56,7 +56,8 @@ def save_excluded(versions: Path, excluded) -> None:
     (versions / "exclude.json").write_text(json.dumps({"excluded": sorted(excluded)}, indent=1) + "\n")
 
 
-def build(records, versions, actor: str | None = None, name: str | None = None) -> dict:
+def build(records, versions, actor: str | None = None, name: str | None = None, env=None) -> dict:
+    """env is a desk version from workalike.envs; None is quote-desk/1."""
     versions = Path(versions)
     name = name or versions.name
     excluded = load_excluded(versions)
@@ -66,7 +67,7 @@ def build(records, versions, actor: str | None = None, name: str | None = None) 
         raise SystemExit("no finished episode left to learn from")
     n = 1 + max((int(p.name[1:]) for p in versions.glob("v*") if p.name[1:].isdigit()), default=0)
     out = versions / f"v{n}"
-    write_jsonl([sft_row(e["clean"]) for e in kept], out / "sft" / f"{name}-train.jsonl")
+    write_jsonl([sft_row(e["clean"], env) for e in kept], out / "sft" / f"{name}-train.jsonl")
     manifest = {"version": f"v{n}", "name": f"{name}-v{n}", "created": wall_clock(), "actor": actor,
                 "records": str(records), "records_sha256": hashlib.sha256(Path(records).read_bytes()).hexdigest(),
                 "rows": len(kept), "episodes": [e["ep"] for e in kept],

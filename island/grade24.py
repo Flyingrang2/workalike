@@ -119,6 +119,8 @@ def said(text: str, key: str) -> bool:
         return bool(DESIGN.search(text) and SETUP.search(text))
     if key == "code_note":  # the person's way: the quote goes out, and the reply says the code differs
         return bool(CODE_NOTE.search(text))
+    if key == "defer_any":
+        return bool(LATER.search(text))
     if key == "defer_payment":
         return defers(PAY, text)
     if key == "defer_service":

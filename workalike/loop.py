@@ -28,6 +28,8 @@ from .desk2 import list_price
 from .envs import V2
 from .filter import clean_episode, episode_meta
 from .record import Recorder, group_episodes, read_events, wall_clock
+from .autolearn import active_adapter
+from .envs import V2
 from .rules import STATES, RuleBook, propose
 from .web2 import HANGUL, describe_ko, translation_problems
 
@@ -82,7 +84,7 @@ def rule_ids(text: str) -> set[int]:
 class LoopApp:
     def __init__(self, out, make_model, cases: list[dict], desk=None, switch=None, person_records=None,
                  examples: list[tuple[str, dict]] | None = None, examples_label: str = "", to_en=None, to_ko=None,
-                 cached_cards=None, workers: int = 6, rule_en=None):
+                 cached_cards=None, workers: int = 6, rule_en=None, versions=None, adapter_model=None):
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.make_model, self.cases, self.desk, self.switch = make_model, cases, desk, switch
@@ -91,6 +93,7 @@ class LoopApp:
         self.to_en, self.to_ko = to_en, to_ko
         self.rule_en = rule_en or to_en  # a rule line is translated as an instruction, not as a letter
         self.cached_cards = Path(cached_cards) if cached_cards else None
+        self.versions, self.adapter_model = versions, adapter_model  # the autolearn folder and how to reach its adapter
         self.token = desk.token if desk else secrets.token_urlsafe(16)
         self.book = RuleBook(self.out / "rules.json")
         self.lock = threading.Lock()
@@ -182,21 +185,35 @@ class LoopApp:
             ids = self.book.add_proposed(data["cards"], f"cached:{self.cached_cards.name}", ko)
         return {"cards": ids}
 
-    def _attempt(self, job, rules):
+    def _attempt(self, job, rules, adapter=None):
         case = self.cases[job["case"]]
         tid = case["view"]["ticket_id"]
         # Each attempt records with its own recorder (a recorder follows one episode); previews are not kept.
         recorder = None if job.get("preview") else Recorder(self.out / "agent.jsonl")
-        done = product.work(case["view"], case["hidden"]["state"], self.make_model(), rules, recorder,
+        model = self.adapter_model(adapter["name"]) if adapter else self.make_model()
+        # An adapter works with no rules in its prompt: what it learned is in its weights, and it keeps the prompt it
+        # was trained on. A rewrite note still reaches it.
+        keep = {"base_system": V2.system_prompt, "ask_used": False} if adapter else {}
+        done = product.work(case["view"], case["hidden"]["state"], model, rules, recorder,
                             answers={tid: job["answer"]} if job.get("answer") else None,
-                            episode=f"e-{job['id']}-{secrets.token_hex(3)}")
+                            episode=f"e-{job['id']}-{secrets.token_hex(3)}", **keep)
+        job.setdefault("spent", []).extend(getattr(model, "calls", []))
         checks = product.guard(done["state"], tid, done["history"]) if done["drafts"] else []
         return done, checks
+
+    def active_adapter(self):
+        """Not when the rules have moved on since it was trained: a person's change counts from the next request,
+        through the written rules, until the adapter has learned it."""
+        a = active_adapter(self.versions) if self.versions and self.adapter_model else None
+        return None if a and a.get("rule_version") not in (None, self.book.version) else a
 
     def _run_work(self, job):
         """Work the case; if the desk's checks hold the draft back, say why and let the model write it once more.
         Both drafts are kept, and a second draft that still fails stays unapprovable."""
-        done, checks, first = product.with_one_rewrite(lambda rules: self._attempt(job, rules), job["rules"])
+        adapter = self.active_adapter()
+        done, checks, first = product.with_one_rewrite(lambda rules: self._attempt(job, rules, adapter),
+                                                       "" if adapter else job["rules"])
+        spent = job.pop("spent", [])
         if first:
             first.pop("job")
         s = done["state"]
@@ -208,7 +225,9 @@ class LoopApp:
         used = done["used"]
         known = rule_ids(job["rules"])
         tid = self.cases[job["case"]]["view"]["ticket_id"]
-        return {"outcome": done["outcome"], "error": done["error"], "used": used,
+        return {"outcome": done["outcome"], "error": done["error"], "used": used, "adapter": adapter and adapter["name"],
+                "tokens": sum((c["usage"] or {}).get("completion_tokens", 0) for c in spent),
+                "seconds": round(sum(c["seconds"] for c in spent)),
                 "used_unknown": sorted(set(used or []) - known) if used is not None else [],
                 "drafts": [{**d, "ko": self._ko(d["message"])} for d in done["drafts"]],
                 "questions": [{**q, "ko": self._ko(q["question"])} for q in done["questions"]],
@@ -407,9 +426,22 @@ class LoopApp:
                 f"<style>{CSS}</style></head><body>{body}"
                 + (POLL.replace("__STAMP__", stamp) if stamp else "") + "</body></html>")
 
+    def _learn_card(self) -> str:
+        path = Path(self.versions) / "status.json" if self.versions else None
+        if not path or not path.exists():
+            return ""
+        s = json.loads(path.read_text())
+        a = s.get("active")
+        on = (f"<p>켜진 어댑터 <b>{e(a['version'])}</b>: 기록 {a['tickets']}건에서 학습, 시험 {a['check']['good']}/{a['check']['tickets']}, "
+              f"위험 {a['check']['dangerous']}건. 규칙 글 없이 일합니다.</p>") if a else "<p>아직 켜진 어댑터가 없습니다.</p>"
+        if a and not self.active_adapter():
+            on = f"<p>규칙이 어댑터 {e(a['version'])}보다 새것이라, 다음 학습까지 글로 된 규칙으로 일합니다.</p>"
+        steps = "".join(f"<li><small>{e(x['t'])}</small> {e(x['what'])}</li>" for x in s["steps"][-5:])
+        return f"<div class='card'><h2>자동 학습: {e(s.get('state', ''))}</h2>{on}<ul>{steps}</ul></div>"
+
     def _agent(self) -> str:
         parts = [f"<div class='card msg'>{e(self.message)}</div>" if self.message else "",
-                 self._records_card(), self._cards_card(), self._work_card(), self._previews(), self._jobs_card()]
+                 self._records_card(), self._learn_card(), self._cards_card(), self._work_card(), self._previews(), self._jobs_card()]
         return self._doc("대리인", "<div class='pane'>" + "".join(parts) + "</div>", stamp=self._stamp())
 
     def _records_card(self) -> str:

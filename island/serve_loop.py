@@ -40,6 +40,7 @@ def main() -> None:
     ap.add_argument("--examples-label", default="가상 직원 C의 기록")
     ap.add_argument("--examples-limit", type=int, default=60)
     ap.add_argument("--cards", help="cards proposed earlier (island.propose_cards output)")
+    ap.add_argument("--learn", help="the autolearn versions folder: show its state and work with its active adapter")
     ap.add_argument("--book", help="start from this rule book (cards a person has already checked), if out has none yet")
     ap.add_argument("--model", default="muse-glimmer")
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
@@ -76,7 +77,9 @@ def main() -> None:
     app = LoopApp(out, lambda: ChatModel(args.base_url, args.model, temperature=0, max_tokens=16000),
                   read_jsonl(args.cases), desk, switch, out / "records.jsonl" if desk else None, examples,
                   args.examples_label, to_en, to_ko if args.translator else None, args.cards,
-                  rule_en=command_translator(args.translator + " --rule") if args.translator else None)
+                  rule_en=command_translator(args.translator + " --rule") if args.translator else None,
+                  versions=args.learn,
+                  adapter_model=lambda name: ChatModel(args.base_url, name, temperature=0, max_tokens=16000))
     if desk:
         desk.badge = app.badge
     server = make_server(app, port=args.port)

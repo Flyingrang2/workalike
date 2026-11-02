@@ -221,3 +221,30 @@ def test_what_the_person_settled_is_shown_as_theirs_and_no_longer_as_unknown(tmp
     page = app.page_for("/agent")
     assert "이틀이면 충분합니다" in page and "담당자가 정함" in page and "how soon is too soon</li>" not in page
     assert "Two days is enough." in app.book.as_procedure()
+
+
+def test_the_active_adapter_works_with_no_rules_and_its_state_is_shown(tmp_path):
+    from workalike.envs import V2
+    seen = {}
+
+    def adapter(messages, tools):
+        seen.update(system=messages[0]["content"])
+        return asking_model(messages, tools)
+    versions = tmp_path / "me"
+    versions.mkdir()
+    (versions / "status.json").write_text(json.dumps({
+        "state": "v1 켰습니다", "steps": [{"t": "t", "what": "v1 켰습니다"}],
+        "active": {"version": "v1", "name": "me-v1", "path": "p", "tickets": 12, "rows": 40, "train_seconds": 9,
+                   "check": {"good": 3, "tickets": 4, "dangerous": 0}}}))
+    app = app_for(tmp_path)
+    app.versions, app.adapter_model = versions, lambda name: adapter
+    app.post("/agent/load", {})
+    app.todo.join()
+    app.post("/agent/status", {"card": "R1", "status": "confirmed"})
+    app.post("/agent/work", {"case": "0"})
+    app.todo.join()
+    [job] = [j for j in app.jobs.values() if j["kind"] == "work"]
+    assert job["adapter"] == "me-v1" and job["outcome"] == "draft" and seen["system"] == V2.system_prompt
+    assert "R1. When" not in seen["system"]
+    page = app.page_for("/agent")
+    assert "켜진 어댑터" in page and "자동 학습" in page

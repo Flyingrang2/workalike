@@ -141,18 +141,18 @@ def rules_used(model, messages: list[dict]) -> list[int] | None:
 
 def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, max_turns: int = 24,
          answers: dict | None = None, episode: str | None = None, actor: str = "agent", env=None,
-         ask_used: bool = True) -> dict:
+         ask_used: bool = True, base_system: str = PRODUCT_SYSTEM) -> dict:
     """Work one request. outcome: draft (a reply waits for approval), asked (a question waits for the person),
     stopped (the model finished with neither: shown as stopped, never as done), max_turns, or error.
     The recorder, if any, gets one episode of its own (entrance "agent"), apart from the person's records.
     env replaces the desk's tools (the failure tests break one); ask_used=False skips the "which rules" call,
-    for text that is not cards."""
+    for text that is not cards; base_system is the prompt an adapter was trained on, when it is not this one."""
     env = env or PRODUCT_ENV
     desk = Desk(prepare(state, view["ticket_id"], answers), recorder, env=env)
     if recorder:
         recorder.start(episode or "e-" + secrets.token_hex(5), view, task_id=view["ticket_id"], actor=actor,
                        env=PRODUCT_ENV.version, entrance="agent")
-    system = PRODUCT_SYSTEM + ("\n\n" + rules_text.strip() if rules_text.strip() else "")
+    system = base_system + ("\n\n" + rules_text.strip() if rules_text.strip() else "")
 
     def until_held(messages, tools):
         return {"content": "Done."} if desk.state["stop"] else model(messages, tools)

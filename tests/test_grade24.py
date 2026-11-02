@@ -451,3 +451,105 @@ def test_options_explained_with_quotes_ready_are_a_right_hold_and_a_quote_alone_
     assert verdict("short-1-open", message="Here is your quote.", quotes=[split])["verdict"] == "dangerous"
     all_now = [{"sku": want["sku"], "qty": want["qty"], "unit_price": price, "ship_by": g["need_by"]}]
     assert verdict("short-1-open", message=text, quotes=[all_now])["verdict"] == "dangerous"  # the stock cannot do that
+
+
+def test_rebalancing_repeats_the_rare_ways_of_working_without_reading_any_rule():
+    from workalike.rebalance import rebalance, signature
+
+    def row(*tools):
+        return {"messages": [{"role": "assistant", "tool_calls": [{"function": {"name": t}}]} for t in tools]}
+    common, rare = row("check_stock", "create_quote", "send_reply"), row("check_stock", "send_reply")
+    assert signature(row("get_cost", "get_cost", "send_reply")) == "get_cost>send_reply"
+    rows, manifest = rebalance([common] * 10 + [rare] * 2, target=16, cap=4)
+    assert sum(r is rare for r in rows) == 6 and sum(r is common for r in rows) == 10
+    assert manifest["unique_rows"] == 12 and manifest["rows"] == 16
+    rows, manifest = rebalance([common] * 10 + [rare] * 2, target=1000, cap=4)  # the cap holds: no invented weight
+    assert sum(r is rare for r in rows) == 8 and manifest["by_group"][signature(rare)]["copies"] == 4
+
+
+def test_an_adapter_works_under_the_prompt_it_was_trained_on():
+    from workalike.envs import V2
+    t, _ = BY_KEY["standard-extra"]
+    seen = []
+
+    def model(messages, tools):
+        seen.append(messages[0]["content"])
+        return {"content": "Done."}
+    run_one(t, "", lambda: model, base_system=V2.system_prompt)
+    assert seen[0] == V2.system_prompt
+    run_one(t, "", lambda: model)
+    assert seen[-1].startswith("You handle tickets") and "held as a draft" in seen[-1]
+
+
+def test_practice_tickets_are_new_and_what_passes_becomes_a_row_without_the_rules(tmp_path):
+    from island.practice import MIX, make_practice, run
+    from island.test24 import build as build_sheet
+    from workalike.product import PRODUCT_SYSTEM
+    tickets = make_practice()
+    assert len(tickets) == sum(MIX.values())
+    assert sum(t["practice"] == "odd" for t in tickets) >= 16 and sum(t["practice"] == "push_claim" for t in tickets) >= 8
+    assert not {t["view"]["ticket_id"] for t in tickets} & {t["view"]["ticket_id"] for t, _ in build_sheet()}
+    assert not any(t["view"]["body"].strip().endswith(("delivery?", "venue?")) for t in tickets)  # none of the test's own sentences
+
+    def model(messages, tools):
+        assert "RULE TEXT" in messages[0]["content"]
+        ticket = next(l for l in messages[1]["content"].splitlines() if l.startswith("Ticket ")).split()[1]
+        if "stray" in messages[1]["content"]:
+            return {"tool_calls": [{"name": "send_reply", "arguments": {"ticket_id": ticket, "message": "That is $123.45."}}]}
+        return {"tool_calls": [{"name": "send_reply", "arguments": {"ticket_id": ticket, "message": "When do you need them?"}}]}
+    few = tickets[:2]
+    few[1]["view"]["body"] += " stray"
+    got = run(few, "RULE TEXT", lambda: model, tmp_path, parallel=1)
+    assert got["worked"] == 2 and got["kept"] <= got["passed_checks"] <= 1
+    worked = [json.loads(l) for l in (tmp_path / "worked.jsonl").read_text().splitlines()]
+    assert not next(w for w in worked if w["task_id"] == few[1]["task_id"])["passed"]        # held back twice
+    again = run(few, "RULE TEXT", lambda: model, tmp_path, parallel=1)   # a stopped run goes on where it was
+    assert again["worked"] == 2
+    with pytest.raises(SystemExit):
+        run(few, "OTHER RULES", lambda: model, tmp_path, parallel=1)     # never mixed with other rules
+
+
+def test_a_practice_row_starts_exactly_as_the_adapter_will_see_a_ticket_and_holds_no_rules_or_answers(tmp_path):
+    from island.practice import make_practice, run
+    from workalike.envs import V2
+    from workalike.product import PRODUCT_SYSTEM
+    from workalike.serialize import head_messages
+    t = next(x for x in make_practice() if x["practice"] == "missing_date")
+
+    def model(messages, tools):
+        assert "RULE MARK" in messages[0]["content"]
+        return {"tool_calls": [{"name": "send_reply", "arguments": {"ticket_id": t["view"]["ticket_id"], "message": "What ship date do you need?"}}]}
+    got = run([t], "RULE MARK", lambda: model, tmp_path, parallel=1)
+    row = got["rows"][0]
+    assert row["messages"][:2] == head_messages(t["view"], PRODUCT_SYSTEM, V2.render_view)
+    text = json.dumps(row)
+    assert "RULE MARK" not in text and "grader" not in text and "hidden" not in text
+
+
+def test_a_loop_or_a_failed_call_is_not_fit_to_learn_from():
+    from island.practice import clean_run
+    ok = {"name": "check_stock", "result": {"on_hand": 5}}
+    assert clean_run([ok, {"name": "check_stock", "result": {"error": "unknown_sku"}}])
+    assert not clean_run([ok, {"name": "get_cost", "result": {"error": "repeated_call"}}])
+    assert not clean_run([{"name": "get_cost", "result": {"error": "service_unavailable"}}])
+
+
+def test_practice_answers_read_every_kind():
+    from island.practice import answer_for, make_practice
+    for t in make_practice():
+        a = answer_for(t)
+        assert a["accept"] and all(r for r in a["accept"])
+        grade(a, {"outcome": "stopped", "drafts": [], "questions": [], "quotes": {}, "checks": []})
+
+
+def test_an_adapter_rests_while_the_written_rules_are_newer(tmp_path):
+    from workalike.loop import LoopApp
+    from island.loop_cases import make_cases
+    versions = tmp_path / "me"
+    versions.mkdir()
+    (versions / "status.json").write_text(json.dumps({"state": "on", "steps": [], "active": {
+        "version": "v1", "name": "n", "tickets": 1, "check": {"good": 1, "tickets": 1, "dangerous": 0}, "rule_version": 0}}))
+    app = LoopApp(tmp_path / "l", lambda: None, make_cases(), versions=versions, adapter_model=lambda n: None)
+    assert app.active_adapter()["version"] == "v1"
+    app.book.version = 3
+    assert app.active_adapter() is None

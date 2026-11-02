@@ -22,6 +22,7 @@ from pathlib import Path
 
 from workalike import product
 from workalike.desk import unit_price_for
+from workalike.envs import V2
 from workalike.model_client import ChatModel
 from workalike.sft import read_jsonl
 
@@ -60,7 +61,7 @@ def broken_env(names: list[str]):
                                                               **{n: product.guarded(n, down) for n in names}})
 
 
-def run_one(task: dict, rules: str, make_model, broken=None) -> dict:
+def run_one(task: dict, rules: str, make_model, broken=None, base_system: str = product.PRODUCT_SYSTEM) -> dict:
     models = []
     env = broken_env(broken) if broken else None
 
@@ -69,7 +70,8 @@ def run_one(task: dict, rules: str, make_model, broken=None) -> dict:
         models.append(model)
         # ask_used=False: the "which rules did you use" call comes after the work and only cards can answer it; left out
         # for every arm so they all make the same calls.
-        done = product.work(task["view"], task["hidden"]["state"], model, text, env=env, ask_used=False)
+        done = product.work(task["view"], task["hidden"]["state"], model, text, env=env, ask_used=False,
+                            base_system=base_system)
         return done, product.guard(done["state"], task["view"]["ticket_id"], done["history"]) if done["drafts"] else []
     start = time.monotonic()
     done, checks, first = product.with_one_rewrite(attempt, rules)
@@ -103,11 +105,16 @@ def run(args) -> None:
     tasks = {t["task_id"]: t for t in read_jsonl(args.tasks)}
     arms = dict(a.split("=", 1) for a in args.arm)
     texts = {name: Path(path).read_text() for name, path in arms.items()}
-    make_model = lambda: ChatModel(args.base_url, args.model, temperature=0, max_tokens=args.max_tokens)  # noqa: E731
+    served = dict(m.split("=", 1) for m in args.served)  # an arm can be an adapter: its text is empty, its model is the LoRA
+    make_model = lambda arm=None: ChatModel(args.base_url, served.get(arm, args.model), temperature=0, max_tokens=args.max_tokens)  # noqa: E731
+    # An adapter works under the prompt it was trained on (the prompt it sees is a contract between training and work).
+    trained_on = {"v2": V2.system_prompt, "product": product.PRODUCT_SYSTEM}[args.adapter_prompt]
+    system_of = lambda arm: trained_on if arm in served else product.PRODUCT_SYSTEM  # noqa: E731
     lock = threading.Lock()
     manifest = {"tasks": sha(Path(args.tasks).read_text()), "arms": {k: sha(v) for k, v in sorted(texts.items())},
                 "fail": sha(Path(args.fail).read_text()) if args.fail else None, "rounds": args.rounds,
-                "fail_rounds": args.fail_rounds, "model": args.model, "max_tokens": args.max_tokens, "temperature": 0}
+                "fail_rounds": args.fail_rounds, "model": args.model, "served": served, "max_tokens": args.max_tokens,
+                "temperature": 0}
     held = out / "manifest.json"
     if held.exists() and json.loads(held.read_text()) != manifest:
         raise SystemExit(f"{held} says these results came from other tickets, arms or settings; use a new --out")
@@ -120,7 +127,7 @@ def run(args) -> None:
     def one(job):
         r, arm, tid = job
         try:
-            row = run_one(tasks[tid], texts[arm], make_model)
+            row = run_one(tasks[tid], texts[arm], lambda: make_model(arm), base_system=system_of(arm))
         except Exception as e:
             row = failed_row(e)
         save({"round": r, "arm": arm, "task_id": tid, **row})
@@ -129,7 +136,9 @@ def run(args) -> None:
     def one_fail(job):
         r, f = job
         try:
-            row = run_one(f["ticket"], f["rules"], make_model, broken=f.get("broken"))
+            arm = args.fail_arm
+            rules = "" if arm in served and f.get("broken") else f["rules"]
+            row = run_one(f["ticket"], rules, lambda: make_model(arm), broken=f.get("broken"), base_system=system_of(arm))
         except Exception as e:
             row = failed_row(e)
         save({"round": r, "arm": "fail", "task_id": f["key"], **row})
@@ -257,6 +266,9 @@ def main() -> None:
     ap.add_argument("--report")
     ap.add_argument("--fail", help="fail.jsonl: the failure scenarios, after the main run")
     ap.add_argument("--fail-rounds", type=int, default=3)
+    ap.add_argument("--fail-arm", help="which arm's model works the failure scenarios (default: the base model)")
+    ap.add_argument("--adapter-prompt", default="v2", choices=("v2", "product"), help="the prompt the adapters were trained on")
+    ap.add_argument("--served", action="append", default=[], help="arm=served model name, for an arm that is an adapter")
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--model", default="muse-glimmer")
     ap.add_argument("--max-tokens", type=int, default=16000)

@@ -88,7 +88,7 @@ TWIN_PAIRS = {"train": 4, "dev": 3, "eval": 2, "dev2": 4, "train150": 4}
 PAIRS_PER_TYPE = {"dev2": 3, "train150": 5}  # twin pairs of each type; one where a split is not listed
 TICKET_RANGES = {"train": (1000, 49999), "dev": (100000, 199999), "eval": (50000, 99999), "dev2": (200000, 299999),
                  "train150": (300000, 399999), "demo": (400000, 449999),  # demo: the product loop's cases
-                 "test24": (450000, 489999), "test24dev": (490000, 499999)}
+                 "test24": (450000, 489999), "test24dev": (490000, 499999), "train_practice": (500000, 599999)}
 # The sets made with seed 11. They do not change once a person has worked them. One change was made before
 # any person or any model saw them beyond a first base run on dev (10-28): the owner's fixed answer now
 # also leaves anything else to the clerk (first hashes 7f684edf, ff16727f, d9e986fd).
