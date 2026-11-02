@@ -144,11 +144,21 @@ def _unknown_sku(state, sku):
     return {"error": "unknown_sku", "sku": sku, "did_you_mean": match[0] if match else None}
 
 
+def _own_quote(state, quote_id):
+    """A quote this desk drew up: not a price anyone approved, and it has no validity date. One made in this sitting
+    says draft; one that was already there when the ticket came in has gone out."""
+    draft = state["drafts"].get(quote_id)
+    if draft is None:
+        return {"error": "unknown_quote", "quote_id": quote_id}
+    return {"quote_id": quote_id, "status": draft.get("status", "issued"), "valid_until": None,
+            "lines": [{**line, "name": state["catalog"][line["sku"]]["name"]} for line in draft["lines"]]}
+
+
 def lookup_quote(state, quote_id):
     quote_id = quote_id if quote_id in state["quotes"] else quote_id.upper()  # ids are not case sensitive
     quote = state["quotes"].get(quote_id)
     if quote is None:
-        return {"error": "unknown_quote", "quote_id": quote_id}
+        return _own_quote(state, quote_id)
     status = "approved" if quote["valid_until"] >= state["today"] else "expired"
     return {"quote_id": quote_id, "status": status, "valid_until": quote["valid_until"],
             "lines": [dict(line) for line in quote["lines"]]}
@@ -212,7 +222,7 @@ def create_quote(state, ticket_id, lines, ship_by):
         out.append({"sku": line["sku"], "qty": line["qty"], "unit_price": line["unit_price"],
                     "line_total": round(line["unit_price"] * line["qty"], 2)})
     quote_id = f"Q-{ticket_id.split('-')[-1]}-{len(state['drafts']) + 1}"
-    state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out, "ship_by": ship_by}
+    state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out, "ship_by": ship_by, "status": "draft"}
     return {"quote_id": quote_id, "ticket_id": ticket_id, "lines": out,
             "total": round(sum(l["line_total"] for l in out), 2), "ship_by": ship_by, "status": "draft"}
 

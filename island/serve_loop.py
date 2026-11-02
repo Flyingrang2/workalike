@@ -4,6 +4,9 @@
         --translator "python3 .../tools/translate.py" --cases data/loop/cases.jsonl \
         --examples data/v2/records/c-train.jsonl --model muse-glimmer [--cards runs/v2-cards/c60-s1.glimmer.json]
 
+--lang en shows both panes in English. --korean and --translator are then not needed and not used: the person reads
+each ticket's English mail and types English.
+
 Open http://127.0.0.1:8770. The person's records go to <out>/records.jsonl through the recording switch; the
 agent's go to <out>/agent.jsonl. --examples puts a virtual worker's records (the first 60 in the 11:curve:1 order,
 the ones the procedures were written from) beside the person's, read-only, so cards can be proposed before the
@@ -24,7 +27,7 @@ from workalike.model_client import ChatModel
 from workalike.record import Recorder, RecordSwitch, group_episodes, read_events
 from workalike.sft import read_jsonl
 from workalike.web import make_server
-from workalike.web2 import Korean, KoreanDesk, command_translator
+from workalike.web2 import AsWritten, Korean, KoreanDesk, as_written, command_translator
 
 from .serve_web import keep_finished, sessions_for
 
@@ -46,16 +49,18 @@ def main() -> None:
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--actor", default="person")
     ap.add_argument("--port", type=int, default=8770)
+    ap.add_argument("--lang", choices=("ko", "en"), default="ko", help="the language of both panes")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     if args.book and not (out / "rules.json").exists():
         (out / "rules.json").write_text(Path(args.book).read_text())
 
-    to_en = command_translator(args.translator) if args.translator else None
+    translator = args.translator if args.lang == "ko" else None  # in English nothing is translated
+    to_en = command_translator(translator) if translator else None
 
     def to_ko(text):
-        res = subprocess.run(shlex.split(args.translator) + ["--to", "ko"], input=text, capture_output=True,
+        res = subprocess.run(shlex.split(translator) + ["--to", "ko"], input=text, capture_output=True,
                              text=True, check=True, timeout=120).stdout
         return json.loads(res)["ko"]
 
@@ -64,10 +69,13 @@ def main() -> None:
         done = keep_finished(out / "records.jsonl")
         todo = [t for t in read_jsonl(args.tasks) if t["task_id"] not in done]
         switch = RecordSwitch(Recorder(out / "records.jsonl"))
-        if not (args.korean and args.translator):
+        if args.lang == "en":
+            desk = KoreanDesk(sessions_for(todo, args.actor), switch, AsWritten(), as_written, lang="en")
+        elif not (args.korean and translator):
             raise SystemExit("--tasks needs --korean and --translator")
-        desk = KoreanDesk(sessions_for(todo, args.actor), switch, Korean(json.loads(Path(args.korean).read_text())), to_en,
-                          command_translator(args.translator + " --term") if args.translator else None)
+        else:
+            desk = KoreanDesk(sessions_for(todo, args.actor), switch, Korean(json.loads(Path(args.korean).read_text())), to_en,
+                              command_translator(translator + " --term"))
     examples = []
     if args.examples:
         examples = [(episode_meta(ev)["ep"], clean_episode(ev))
@@ -76,10 +84,10 @@ def main() -> None:
         examples = examples[: args.examples_limit]
     app = LoopApp(out, lambda: ChatModel(args.base_url, args.model, temperature=0, max_tokens=16000),
                   read_jsonl(args.cases), desk, switch, out / "records.jsonl" if desk else None, examples,
-                  args.examples_label, to_en, to_ko if args.translator else None, args.cards,
-                  rule_en=command_translator(args.translator + " --rule") if args.translator else None,
+                  args.examples_label, to_en, to_ko if translator else None, args.cards,
+                  rule_en=command_translator(translator + " --rule") if translator else None,
                   versions=args.learn,
-                  adapter_model=lambda name: ChatModel(args.base_url, name, temperature=0, max_tokens=16000))
+                  adapter_model=lambda name: ChatModel(args.base_url, name, temperature=0, max_tokens=16000), lang=args.lang)
     if desk:
         desk.badge = app.badge
     server = make_server(app, port=args.port)

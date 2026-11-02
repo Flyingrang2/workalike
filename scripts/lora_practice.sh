@@ -50,7 +50,7 @@ if [ ! -f "$A/trained.ok" ]; then
     touch "$A/trained.ok"
 fi
 start_server "$OUT/server-test.log" "p-$T" "p-$T=$A"
-$PY -m island.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm p-$T=$B/arms/none.txt --served p-$T=p-$T \
+$PY -m island.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm $T=$B/arms/$T.txt --arm p-$T=$B/arms/none.txt --served p-$T=p-$T \
     --adapter-prompt product --rounds 2 --parallel 6 --fail $B/fail.jsonl --fail-rounds 3 --fail-arm p-$T --out "$OUT/regress" > "$OUT/regress.log"
 $PY -m island.run24 --tasks $C/tickets.jsonl --answers $C/answers.jsonl --arm none=$B/arms/none.txt --arm $T=$B/arms/$T.txt \
     --arm p-$T=$B/arms/none.txt --served p-$T=p-$T --adapter-prompt product --rounds 2 --parallel 6 --out "$OUT/new" > "$OUT/new.log"

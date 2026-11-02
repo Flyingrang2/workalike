@@ -3,6 +3,8 @@ the rules in the records, has the person confirm them, works new requests with t
 
     python -m island.serve_loop ...   (wires the models, translators and files)
 
+Korean by default; lang="en" sends every page through workalike.lang for people who read English.
+
 /        both panes side by side
 /work    the Korean quote desk, recording through a switch the person controls (it applies from the next ticket)
 /agent   records (the person's, which they can delete, and a virtual worker's, read-only); rule cards (propose,
@@ -30,8 +32,9 @@ from .filter import clean_episode, episode_meta
 from .record import Recorder, group_episodes, read_events, wall_clock
 from .autolearn import active_adapter
 from .envs import V2
+from .lang import boundary
 from .rules import STATES, RuleBook, propose
-from .web2 import HANGUL, describe_ko, translation_problems
+from .web2 import HANGUL, describe_en, describe_ko, translation_problems
 
 e = html.escape
 LOOKUPS = ("lookup_quote", "search_catalog", "get_cost", "check_stock", "calc_price", "create_quote")
@@ -84,7 +87,10 @@ def rule_ids(text: str) -> set[int]:
 class LoopApp:
     def __init__(self, out, make_model, cases: list[dict], desk=None, switch=None, person_records=None,
                  examples: list[tuple[str, dict]] | None = None, examples_label: str = "", to_en=None, to_ko=None,
-                 cached_cards=None, workers: int = 6, rule_en=None, versions=None, adapter_model=None):
+                 cached_cards=None, workers: int = 6, rule_en=None, versions=None, adapter_model=None, lang: str = "ko"):
+        self.lang = lang
+        self.keep, self.show = boundary(lang)
+        self.describe = describe_en if lang == "en" else describe_ko
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.make_model, self.cases, self.desk, self.switch = make_model, cases, desk, switch
@@ -232,7 +238,8 @@ class LoopApp:
                 "drafts": [{**d, "ko": self._ko(d["message"])} for d in done["drafts"]],
                 "questions": [{**q, "ko": self._ko(q["question"])} for q in done["questions"]],
                 "quotes": quotes, "checks": checks, "first": first,
-                "info": [describe_ko(c["name"], c["args"], c["result"]) for c in done["history"] if c["name"] in LOOKUPS]}
+                "info": [describe_ko(c["name"], c["args"], c["result"]) for c in done["history"] if c["name"] in LOOKUPS],
+                "calls": [{k: c[k] for k in ("name", "args", "result")} for c in done["history"] if c["name"] in LOOKUPS]}
 
     # ---------- records ----------
     def my_records(self) -> list[tuple[str, dict]]:
@@ -393,12 +400,12 @@ class LoopApp:
         return self.page_for("/")
 
     def page_for(self, path: str) -> str:
-        if path.startswith("/work"):
-            return self.desk.page() if self.desk else self._doc("업무", "<div class='pane'>업무 화면 없음</div>")
+        if path.startswith("/work"):  # the desk's page has been through the boundary already
+            return self.desk.page() if self.desk else self.show(self._doc("업무", "<div class='pane'>업무 화면 없음</div>"))
         if path.startswith("/agent"):
             with self.lock:
-                return self._agent()
-        return ("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>workalike</title>"
+                return self.show(self._agent())
+        return self.show("<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>workalike</title>"
                 f"<style>{CSS}</style></head><body><header><b>workalike</b><span>평소처럼 일하면, 적힌 적 없는 "
                 "업무 규칙을 찾아 확인받고, 확인한 만큼 맡습니다</span></header><div class='frames'>"
                 "<iframe src='/work' title='업무'></iframe><iframe src='/agent' title='대리인'></iframe></div></body></html>")
@@ -452,7 +459,7 @@ class LoopApp:
                 meta, done = episode_meta(events), events[-1]["type"] == "episode_end"
                 calls = [ev for ev in events if ev["type"] == "tool_call"]
                 results = {ev["call_id"]: ev["result"] for ev in events if ev["type"] == "tool_result"}
-                steps = "".join(f"<p>{e(describe_ko(c['name'], c['args'], results.get(c['call_id'], {})))}</p>"
+                steps = "".join(f"<p>{self.keep(self.describe(c['name'], c['args'], results.get(c['call_id'], {})))}</p>"
                                 for c in calls if c["call_id"] in results)
                 mine.append(f"<details><summary>{e(meta['task_id'] or meta['ep'])} · {events[0]['t'][:16]} · "
                             f"{len(calls)}번 조작{'' if done else ' · 진행 중'}</summary>{steps}"
@@ -473,22 +480,33 @@ class LoopApp:
         return (f"<div class='card'><h2>규칙 카드 (규칙 버전 v{self.book.version}, 확인됨 {confirmed}개. "
                 f"확인됨과 더 물어봐야 함만 대리인에게 갑니다)</h2>{buttons}{cards}</div>")
 
+    def _read(self, ko, en) -> str:
+        """What the person reads of a Korean and English pair: in English the English, whatever Korean is stored."""
+        return self.keep(en) if self.lang == "en" else e(ko or en)
+
+    def _pair(self, ko, en) -> str:
+        """That, with the English under it when the Korean is what was read."""
+        return self._read(ko, en) + (f"<div class='en'>{e(en)}</div>" if ko and self.lang != "en" else "")
+
     def _field(self, card, f) -> str:
         v = card[f]
         by = "담당자가 정함" if v["by"] == "person" else "기록에서 찾음"
-        return (f"<span class='chip {v['by']}'>{by}</span> {e(v['ko'] or v['en'])}"
-                + (f"<div class='en'>{e(v['en'])}</div>" if v["ko"] else ""))
+        return f"<span class='chip {v['by']}'>{by}</span> {self._pair(v['ko'], v['en'])}"
+
+    def _editing(self, v) -> str:
+        return v["en"] if self.lang == "en" else v["ko"] or v["en"]
 
     def _rule(self, c) -> str:
         cid = c["id"]
         answered = {x["question"] for x in c.get("settled", [])}
-        unknowns = "".join(f"<li>{e(u['ko'] or u['en'])}</li>" for u in c["unknowns"] if u["en"] not in answered)
-        settled = "".join(f"<li>{e(x['ko'])}<div class='en'>{e(x['en'])}</div></li>" for x in c.get("settled", []))
+        unknowns = "".join(f"<li>{self._read(u['ko'], u['en'])}</li>" for u in c["unknowns"] if u["en"] not in answered)
+        settled = "".join(f"<li>{self._pair(x['ko'], x['en'])}</li>" for x in c.get("settled", []))
         gone = f"<p class='bad'>근거 기록 중 {len(c['gone'])}건이 지워졌습니다.</p>" if c["gone"] else ""
         pending = ""
         if c["pending"]:
-            rows = "".join(f"<p>{'상황' if f == 'situation' else '처리'} → {e(v['ko'] or v['en'])}"
-                           f"<span class='en'> {e(v['en'])}</span></p>" for f, v in c["pending"].items())
+            rows = "".join(f"<p>{'상황' if f == 'situation' else '처리'} → {self._read(v['ko'], v['en'])}"
+                           + ("" if self.lang == "en" else f"<span class='en'> {e(v['en'])}</span>") + "</p>"
+                           for f, v in c["pending"].items())
             pending = (f"<div class='card'><h3>고친 내용 (아직 적용 안 됨)</h3>{rows}"
                        + self._button("preview", "정해 둔 사례로 미리 돌려 보기", card=cid) + " "
                        + self._button("apply", "적용", "go", card=cid) + " "
@@ -497,8 +515,8 @@ class LoopApp:
                          for s, label in STATES.items() if s != c["status"] and s != "unconfirmed")
         edit = (f"<details><summary>고치기</summary><form method='post' action='/agent/edit'>{self._csrf()}"
                 f"<input type='hidden' name='card' value='{cid}'>상황<textarea name='situation'>"
-                f"{e(c['situation']['ko'] or c['situation']['en'])}</textarea>처리<textarea name='action'>"
-                f"{e(c['action']['ko'] or c['action']['en'])}</textarea><button>고친 내용 저장(적용 전)</button></form></details>")
+                f"{e(self._editing(c['situation']))}</textarea>처리<textarea name='action'>"
+                f"{e(self._editing(c['action']))}</textarea><button>고친 내용 저장(적용 전)</button></form></details>")
         return (f"<div class='rule'><h3>{cid}<span class='chip {c['status']}'>{STATES[c['status']]}</span>"
                 f"<small> 근거 기록 {len(c['records'])}건</small></h3>"
                 f"<p>상황: {self._field(c, 'situation')}</p><p>처리: {self._field(c, 'action')}</p>"
@@ -507,7 +525,7 @@ class LoopApp:
                 + gone + pending + f"<div>{status}</div>{edit}</div>")
 
     def _work_card(self) -> str:
-        rows = "".join(f"<tr><td>{e(t['title'])}</td><td>{e((t.get('ko') or {}).get('body') or t['view']['body'])}</td>"
+        rows = "".join(f"<tr><td>{e(t['title'])}</td><td>{self._read((t.get('ko') or {}).get('body'), t['view']['body'])}</td>"
                        f"<td>{self._button('work', '처리', case=i)}</td></tr>" for i, t in enumerate(self.cases))
         return (f"<div class='card'><h2>새 일 (확인한 규칙 v{self.book.version}로 처리합니다)</h2>"
                 f"{self._button('work', '모두 처리', case='all')}<table>{rows}</table></div>")
@@ -584,14 +602,12 @@ class LoopApp:
             if j["used_unknown"] else ""
         parts.append(f"<p>적용한 규칙: {e(used)}{unknown}</p>")
         for d in j["drafts"]:
-            parts.append(f"<div class='reply'>{e(d['ko'] or d['message'])}"
-                         + (f"<div class='en'>{e(d['message'])}</div>" if d["ko"] else "")
+            parts.append(f"<div class='reply'>{self._pair(d['ko'], d['message'])}"
                          + (f"<small>첨부 견적 {e(d['quote_id'])}</small>" if d.get("quote_id") else "") + "</div>")
         if j["quotes"]:
             parts.append(f"<p>{e(self._lines(j))}</p>")
         for q in j["questions"]:
-            parts.append(f"<div class='reply'>담당자에게 묻습니다: {e(q['ko'] or q['question'])}"
-                         + (f"<div class='en'>{e(q['question'])}</div>" if q["ko"] else "") + "</div>")
+            parts.append(f"<div class='reply'>담당자에게 묻습니다: {self._pair(q['ko'], q['question'])}</div>")
             if not j["decision"]:
                 parts.append(f"<form method='post' action='/agent/answer'>{self._csrf()}"
                              f"<input type='hidden' name='job' value='{j['id']}'><textarea name='says'></textarea>"
@@ -600,15 +616,17 @@ class LoopApp:
         if j.get("first"):
             names = ", ".join(c["name"] for c in j["first"]["failed"])
             parts.append(f"<details><summary>첫 초안은 검사({e(names)})에 걸려 이유를 알려 주고 한 번 다시 쓰게 했습니다"
-                         "</summary>" + "".join(f"<div class='reply'>{e(d['message'])}</div>" for d in j["first"]["drafts"])
+                         "</summary>" + "".join(f"<div class='reply'>{self.keep(d['message'])}</div>" for d in j["first"]["drafts"])
                          + "".join(f"<p class='bad'>✗ {e(c['name'])}: {e(c['detail'])}</p>" for c in j["first"]["failed"])
                          + "</details>")
         if j["checks"]:
             parts.append("<div>" + "".join(f"<p class='{'ok' if c['ok'] else 'bad'}'>{'✓' if c['ok'] else '✗'} "
                                            f"{e(c['name'])}: {e(c['detail'])}</p>" for c in j["checks"]) + "</div>")
-        if j["info"]:
-            parts.append("<details><summary>쓴 정보 " + str(len(j["info"])) + "건</summary>"
-                         + "".join(f"<p>{e(i)}</p>" for i in j["info"]) + "</details>")
+        # In English from the calls; a job older than "calls" only has Korean lines, which stay off the English screen.
+        info = [self.describe(c["name"], c["args"], c["result"]) for c in j.get("calls", [])] if self.lang == "en" else j["info"]
+        if info:
+            parts.append("<details><summary>쓴 정보 " + str(len(info)) + "건</summary>"
+                         + "".join(f"<p>{self.keep(i)}</p>" for i in info) + "</details>")
         if j["outcome"] == "draft" and not j["decision"]:
             ok = all(c["ok"] for c in j["checks"])
             recheck = "<input type='hidden' name='recheck' value='1'>" if stale else ""

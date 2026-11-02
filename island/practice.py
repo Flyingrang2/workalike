@@ -105,7 +105,9 @@ def answer_for(t: dict) -> dict:
 
 def clean_run(history: list[dict]) -> bool:
     """No loop and no failed call, except looking up a code the customer mistyped. A row teaches its whole path."""
-    return not any("error" in (c["result"] or {}) and (c["result"]["error"] != "unknown_sku") for c in history)
+    calls = [(c["name"], json.dumps(c["args"], sort_keys=True)) for c in history]
+    return len(calls) == len(set(calls)) and not any("error" in (c["result"] or {}) and c["result"]["error"] != "unknown_sku"
+                                                     for c in history)
 
 
 def run(tickets: list[dict], rules: str, make_model, out: Path, parallel: int = 6) -> dict:
@@ -152,7 +154,11 @@ def run(tickets: list[dict], rules: str, make_model, out: Path, parallel: int = 
         print(t["task_id"], t["practice"], done["outcome"], verdict["verdict"], "kept" if right else "dropped", flush=True)
     with ThreadPoolExecutor(parallel) as pool:
         list(pool.map(one, [t for t in tickets if t["task_id"] not in seen]))
-    rows = [json.loads(l) for l in done_path.read_text().splitlines()]
+    worked = [json.loads(l) for l in done_path.read_text().splitlines()]
+    by_id = {r["task_id"]: r for r in worked}
+    if len(worked) != len(tickets) or set(by_id) != {t["task_id"] for t in tickets}:
+        raise SystemExit(f"{done_path} does not hold each ticket once: {len(worked)} rows for {len(tickets)} tickets")
+    rows = [by_id[t["task_id"]] for t in tickets]  # the tickets' own order, however the work was resumed
     kinds = {}
     for r in rows:
         k = kinds.setdefault(r["kind"], {"worked": 0, "passed_checks": 0, "kept": 0})

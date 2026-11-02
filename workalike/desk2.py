@@ -227,7 +227,7 @@ def create_quote(state, ticket_id, lines):
             notices.append(f"{line['sku']} at {line['unit_price']:.2f} is {off * 100:.1f}% under list "
                            f"({listed:.2f}); " + why)
     quote_id = f"Q-{ticket_id.split('-')[-1]}-{len(state['drafts']) + 1}"
-    state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out}
+    state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out, "status": "draft"}
     result = {"quote_id": quote_id, "ticket_id": ticket_id, "lines": out,
               "total": round(sum(l["line_total"] for l in out), 2), "status": "draft"}
     if notices:

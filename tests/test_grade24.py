@@ -528,10 +528,11 @@ def test_a_practice_row_starts_exactly_as_the_adapter_will_see_a_ticket_and_hold
 
 def test_a_loop_or_a_failed_call_is_not_fit_to_learn_from():
     from island.practice import clean_run
-    ok = {"name": "check_stock", "result": {"on_hand": 5}}
-    assert clean_run([ok, {"name": "check_stock", "result": {"error": "unknown_sku"}}])
-    assert not clean_run([ok, {"name": "get_cost", "result": {"error": "repeated_call"}}])
-    assert not clean_run([{"name": "get_cost", "result": {"error": "service_unavailable"}}])
+    ok = {"name": "check_stock", "args": {"sku": "A"}, "result": {"on_hand": 5}}
+    assert clean_run([ok, {"name": "check_stock", "args": {"sku": "B"}, "result": {"error": "unknown_sku"}}])
+    assert not clean_run([ok, {"name": "get_cost", "args": {}, "result": {"error": "repeated_call"}}])
+    assert not clean_run([{"name": "get_cost", "args": {}, "result": {"error": "service_unavailable"}}])
+    assert not clean_run([ok, {**ok, "id": "c2"}])  # the same call twice, however it answered
 
 
 def test_practice_answers_read_every_kind():

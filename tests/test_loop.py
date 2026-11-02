@@ -38,11 +38,11 @@ def owner_model(messages, tools):
     return {"tool_calls": [{"name": "ask_owner", "arguments": {"ticket_id": ticket, "question": "May I discount?"}}]}
 
 
-def app_for(tmp_path, model=asking_model, workers=2, desk=None, switch=None):
+def app_for(tmp_path, model=asking_model, workers=2, desk=None, switch=None, **kw):
     cards = tmp_path / "cards.json"
     cards.write_text(json.dumps(CARDS))
     return LoopApp(tmp_path / "loop", lambda: model, make_cases(), desk, switch,
-                   tmp_path / "records.jsonl" if desk else None, cached_cards=cards, workers=workers)
+                   tmp_path / "records.jsonl" if desk else None, cached_cards=cards, workers=workers, **kw)
 
 
 def test_the_whole_loop_with_a_fake_model(tmp_path):

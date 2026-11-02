@@ -36,7 +36,8 @@ def describe(name: str, args: dict, r: dict) -> str:
         return f"{name} failed: {r['error']}{extra}.{hint}"
     if name == "lookup_quote":
         lines = "; ".join(f"{l['qty']} x {l['sku']} ({l['name']}) at {_money(l['unit_price'])}" for l in r["lines"])
-        return f"Quote {r['quote_id']} is {r['status']}, valid until {r['valid_until']}. Lines: {lines}."
+        until = f", valid until {r['valid_until']}" if r["valid_until"] else ""
+        return f"Quote {r['quote_id']} is {r['status']}{until}. Lines: {lines}."
     if name == "get_cost":
         return f"{r['sku']} ({r['name']}): unit cost {_money(r['unit_cost'])} as of {r['as_of']}."
     if name == "check_stock":
