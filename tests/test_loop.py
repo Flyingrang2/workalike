@@ -194,3 +194,30 @@ def test_the_agent_pane_polls_instead_of_reloading_and_the_stamp_moves_with_new_
     app.post("/agent/work", {"case": "4"})
     app.todo.join()
     assert app.status()["stamp"] != before
+
+
+def test_a_draft_that_still_fails_the_checks_cannot_be_approved_and_nothing_goes_out_before_approval(tmp_path):
+    def stray(messages, tools):
+        if not tools:
+            return {"content": "Rules used: none"}
+        ticket = re.search(r"Ticket (T-\d+)", messages[1]["content"]).group(1)
+        return {"tool_calls": [{"name": "send_reply", "arguments": {"ticket_id": ticket, "message": "That is $123.45."}}]}
+    app = app_for(tmp_path, stray)
+    app.post("/agent/work", {"case": "0"})
+    app.todo.join()
+    [job] = [j for j in app.jobs.values() if j["kind"] == "work"]
+    assert job["first"] and not all(c["ok"] for c in job["checks"]) and "job" not in job["first"]
+    assert not (tmp_path / "loop" / "sent.jsonl").exists()
+    app.post("/agent/approve", {"job": job["id"]})
+    assert job["decision"] is None and not (tmp_path / "loop" / "sent.jsonl").exists()
+
+
+def test_what_the_person_settled_is_shown_as_theirs_and_no_longer_as_unknown(tmp_path):
+    app = app_for(tmp_path)
+    app.post("/agent/load", {})
+    app.todo.join()
+    app.post("/agent/status", {"card": "R1", "status": "confirmed"})
+    app.book.settle("R1", "how soon is too soon", "이틀이면 충분합니다", "Two days is enough.")
+    page = app.page_for("/agent")
+    assert "이틀이면 충분합니다" in page and "담당자가 정함" in page and "how soon is too soon</li>" not in page
+    assert "Two days is enough." in app.book.as_procedure()

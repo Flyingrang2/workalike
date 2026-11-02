@@ -221,6 +221,14 @@ class RuleBook:
         self._bump()
         self.save()
 
+    def settle(self, cid: str, question: str, ko: str, en: str):
+        """The person answers something the records left open. It is theirs, not found in the records."""
+        card = self.card(cid)
+        card.setdefault("settled", []).append({"question": question, "ko": ko, "en": en, "by": "person"})
+        self._note("settled", cid, question=question)
+        self._bump()
+        self.save()
+
     def forget_records(self, eps: set[str]):
         """Records were deleted: cards that cited them say so (the cards stay; the person decides)."""
         for c in self.cards:
@@ -238,11 +246,13 @@ class RuleBook:
             if c["id"] == preview and c["pending"]:
                 fields.update({f: v["en"] for f, v in c["pending"].items()})
                 status = "confirmed"
+            settled = " ".join(f'On "{x["question"]}": {x["en"]}' for x in c.get("settled", []))
+            settled = f" The person also decided. {settled}" if settled else ""
             if status == "confirmed":
-                lines.append(f"{c['id']}. When {fields['situation']}: {fields['action']}")
+                lines.append(f"{c['id']}. When {fields['situation']}: {fields['action']}{settled}")
             elif status == "ask":
                 lines.append(f"{c['id']} (not settled: do not decide this yourself, ask the owner). "
-                             f"When {fields['situation']}: {fields['action']}")
+                             f"When {fields['situation']}: {fields['action']}{settled}")
         return (PREAMBLE + "\n" + "\n".join(lines)) if lines else ""
 
     def text_at(self, version: int) -> str:

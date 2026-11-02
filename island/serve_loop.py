@@ -40,6 +40,7 @@ def main() -> None:
     ap.add_argument("--examples-label", default="가상 직원 C의 기록")
     ap.add_argument("--examples-limit", type=int, default=60)
     ap.add_argument("--cards", help="cards proposed earlier (island.propose_cards output)")
+    ap.add_argument("--book", help="start from this rule book (cards a person has already checked), if out has none yet")
     ap.add_argument("--model", default="muse-glimmer")
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--actor", default="person")
@@ -47,6 +48,8 @@ def main() -> None:
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    if args.book and not (out / "rules.json").exists():
+        (out / "rules.json").write_text(Path(args.book).read_text())
 
     to_en = command_translator(args.translator) if args.translator else None
 

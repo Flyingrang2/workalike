@@ -73,13 +73,22 @@ DEV2_POOL = {**POOLS["eval"],
              "last": ["Okonkwo", "Varga", "Lindgren", "Sato", "Ferreira", "Halloran", "Nakamura", "Petrov"],
              "place": ["Juniper Row", "Tidewater", "Old Mill"],
              "kind": ["Tea Room", "Bike Shop", "Dance School", "Print Club"]}
+# test24 (the main test, 10-29 plan, built 11-02): names no other set uses; the same items as dev2, which the cards
+# never read. Its tickets and their answer sheet come from island/test24.py, not from SPLITS.
+TEST24_POOL = {**POOLS["eval"],
+               "first": ["Saoirse", "Tomasz", "Wanjiru", "Anselm", "Beatriz", "Cormac", "Ayumi", "Emeka", "Linnea",
+                         "Rohan", "Margit", "Ignacio"],
+               "last": ["Adeyemi", "Bergstrom", "Ivanova", "Mbeki", "Tanaka", "Quintero", "Rasmussen", "Oyelaran"],
+               "place": ["Fernhill", "Bramble Lane", "Saltmarsh"],
+               "kind": ["Choir", "Ceramics Studio", "Rowing Club", "Seed Library"]}
 # Twins are made from the same customer, items and dates, so the only difference is the condition.
 TWINS = {"typo_open": "typo_confirmed", "short_open": "short_constrained", "reorder_room": "reorder_tight",
          "missing_date": "standard"}
 TWIN_PAIRS = {"train": 4, "dev": 3, "eval": 2, "dev2": 4, "train150": 4}
 PAIRS_PER_TYPE = {"dev2": 3, "train150": 5}  # twin pairs of each type; one where a split is not listed
 TICKET_RANGES = {"train": (1000, 49999), "dev": (100000, 199999), "eval": (50000, 99999), "dev2": (200000, 299999),
-                 "train150": (300000, 399999), "demo": (400000, 449999)}  # demo: the product loop's cases
+                 "train150": (300000, 399999), "demo": (400000, 449999),  # demo: the product loop's cases
+                 "test24": (450000, 489999), "test24dev": (490000, 499999)}
 # The sets made with seed 11. They do not change once a person has worked them. One change was made before
 # any person or any model saw them beyond a first base run on dev (10-28): the owner's fixed answer now
 # also leaves anything else to the clerk (first hashes 7f684edf, ff16727f, d9e986fd).
@@ -137,10 +146,11 @@ class Builder:
         self.split = split
         self.rng = random.Random(f"v2:{seed}:{split}")
         self.training = split.startswith("train")
-        self.pool = DEV2_POOL if split == "dev2" else POOLS["train" if self.training else "eval"]
+        self.pool = {"dev2": DEV2_POOL, "test24": TEST24_POOL, "test24dev": TEST24_POOL}.get(split) or \
+            POOLS["train" if self.training else "eval"]
         self.skus = [c for c in CATALOG if not self.training or c[0] not in EVAL_ONLY_SKUS]
         self.request = {c[0] for c in self.skus}  # items a ticket may ask for
-        if split == "dev2":
+        if split in ("dev2", "test24", "test24dev"):
             self.skus = self.skus + DEV2_CATALOG
             self.request = {c[0] for c in DEV2_CATALOG}
         self.used: set[str] = set()

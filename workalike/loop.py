@@ -36,15 +36,6 @@ LOOKUPS = ("lookup_quote", "search_catalog", "get_cost", "check_stock", "calc_pr
 OUTCOME = {"draft": "초안, 승인 대기", "asked": "담당자에게 질문", "stopped": "멈춤(초안도 질문도 없음)",
            "max_turns": "멈춤(너무 오래 걸림)", "error": "오류"}
 RULE_LINE = re.compile(r"^(R\d+)\b", re.MULTILINE)
-# What a held-back draft is told before it is written again, by the check that failed.
-HINTS = {"답장 초안": "Finish with a reply to the customer or a question to the owner.",
-         "가격은 견적으로만": "Put prices only on an attached quote; a reply without a quote states no price.",
-         "원가 비공개": "Never tell the customer our unit cost.",
-         "금액은 데스크 값": "State only customer prices the desk gave you (list, quote or approved prices), "
-                         "never a cost or the floor price.",
-         "견적번호 확인": "Name only quotes that exist for this ticket or the customer's earlier quotes.",
-         "quote": "Every quote must keep list price or a discount within your authority (or the owner's okay), "
-                  "never under the floor, with stock for each ship date."}
 WORD = re.compile(r"[a-z]{4,}")
 COMMON = {"customer", "quote", "worker", "with", "from", "that", "this", "when", "before", "price", "within",
           "their", "they", "have", "only", "into", "then", "than", "item", "items"}
@@ -205,14 +196,9 @@ class LoopApp:
     def _run_work(self, job):
         """Work the case; if the desk's checks hold the draft back, say why and let the model write it once more.
         Both drafts are kept, and a second draft that still fails stays unapprovable."""
-        done, checks = self._attempt(job, job["rules"])
-        first = None
-        failed = [c for c in checks if not c["ok"]]
-        if failed:
-            note = ("A draft you wrote for this ticket was held back by the desk's checks. Write it again and "
-                    "avoid this: " + " ".join(HINTS.get(c["name"], HINTS["quote"]) for c in failed))
-            first = {"drafts": done["drafts"], "failed": failed}
-            done, checks = self._attempt(job, (job["rules"] + "\n\n" + note).strip())
+        done, checks, first = product.with_one_rewrite(lambda rules: self._attempt(job, rules), job["rules"])
+        if first:
+            first.pop("job")
         s = done["state"]
         quotes = {}
         for qid in sorted({d["quote_id"] for d in done["drafts"] if d.get("quote_id")}):
@@ -463,7 +449,9 @@ class LoopApp:
 
     def _rule(self, c) -> str:
         cid = c["id"]
-        unknowns = "".join(f"<li>{e(u['ko'] or u['en'])}</li>" for u in c["unknowns"])
+        answered = {x["question"] for x in c.get("settled", [])}
+        unknowns = "".join(f"<li>{e(u['ko'] or u['en'])}</li>" for u in c["unknowns"] if u["en"] not in answered)
+        settled = "".join(f"<li>{e(x['ko'])}<div class='en'>{e(x['en'])}</div></li>" for x in c.get("settled", []))
         gone = f"<p class='bad'>근거 기록 중 {len(c['gone'])}건이 지워졌습니다.</p>" if c["gone"] else ""
         pending = ""
         if c["pending"]:
@@ -483,6 +471,7 @@ class LoopApp:
                 f"<small> 근거 기록 {len(c['records'])}건</small></h3>"
                 f"<p>상황: {self._field(c, 'situation')}</p><p>처리: {self._field(c, 'action')}</p>"
                 + (f"<p>기록만으로는 아직 모르는 것:</p><ul>{unknowns}</ul>" if unknowns else "")
+                + (f"<p><span class='chip person'>담당자가 정함</span></p><ul>{settled}</ul>" if settled else "")
                 + gone + pending + f"<div>{status}</div>{edit}</div>")
 
     def _work_card(self) -> str:

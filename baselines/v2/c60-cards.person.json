@@ -1,0 +1,88 @@
+{
+ "cards": {
+  "R1": {
+   "choice": "ok",
+   "unknown": [
+    "Offer a substitute when, by your own judgement, it is close enough that the customer could use it.",
+    "The apology discount on a substitute is the smallest discount: about 1% when your authority runs 1 to 5%. It is a token of goodwill.",
+    "If there is no way to meet it, apologize, say it cannot be done as asked and explain what can: if they wait, it ships on the restock date, with about 2% off for the wait (when your authority runs 1 to 5%)."
+   ]
+  },
+  "R10": {
+   "choice": "ok",
+   "unknown": [
+    "Apologize for any delay even if there was no earlier acknowledgement, and say it will be done as quickly as possible.",
+    "As the delay gets longer, raise the discount a little within your authority, and give a clear reason for the delay.",
+    "Apologize on a first-time request too; a customer is a customer."
+   ]
+  },
+  "R2": {
+   "choice": "ok",
+   "unknown": [
+    "If the customer insists strongly, do not offer partial shipment or waiting.",
+    null,
+    "If the customer later relents, give the smallest discount, about 1%, as a token of goodwill."
+   ]
+  },
+  "R3": {
+   "choice": "ok",
+   "unknown": [
+    "Ask once: is it this item, is it one of these, and if not, please describe it a little more. Check what they send back against the catalog, then say it is not available or that this is the item.",
+    "If the confirmed code is still not in the catalog, it may not be ours: ask for whatever else they know and say the shop will look into it.",
+    "When several similar items come up, ask the customer whether it is one of these; do not pick one. The aim is to find the item they want."
+   ]
+  },
+  "R4": {
+   "choice": "ok",
+   "unknown": [
+    "This applies to every request: the ship date matters almost as much as the item. Matching the date the customer has in mind with the date the shop can do comes first.",
+    "If the customer never gives a date, quote the earliest date the shop can ship and say in the reply that it is the earliest date the shop can offer.",
+    "Telling the customer the earliest ship date is standard; shipping as early as possible also saves storage cost."
+   ]
+  },
+  "R5": {
+   "choice": "ok",
+   "unknown": [
+    "A buffer is good: when the customer's latest date is after the earliest date the shop can ship, set the date 1 to 2 days before their latest date.",
+    "The exact size of the buffer is a judgement call: 1 or 2 days, normally business days.",
+    "Count business days (in Korea people say 1 to 2 business days); it may differ by country."
+   ]
+  },
+  "R6": {
+   "choice": "ok",
+   "unknown": [
+    "A quote that expires today still counts: a quote holds through its date, so honor it.",
+    "Still check stock and the ship date again: stock can change, and the quote only holds the price.",
+    "A change in cost or discount authority does not override it: an earlier quote within its valid date comes first, and keeping that price keeps the customer's trust."
+   ]
+  },
+  "R7": {
+   "choice": "ok",
+   "unknown": [
+    "Always state clearly that the quote expired, to keep trust and avoid misunderstanding.",
+    "Do not offer a discount first. Only after the customer complains and asks for a cut, give the smallest discount (1%), because selling beats not selling.",
+    "Always recalculate from the current cost, then discount if needed. Never match the old price."
+   ]
+  },
+  "R8": {
+   "choice": "ok",
+   "unknown": [
+    "Always ask the owner about any discount beyond your authority.",
+    "Bring a request to the owner when the customer pushes hard and buys a lot, or is an important customer.",
+    "Do not discount without an explicit request. On a re-quote, when the customer explicitly asks for a lower price, give the smallest discount; a regular customer may get a little more. If it goes beyond your authority, judge again and pass it to the owner if the customer seems important."
+   ]
+  },
+  "R9": {
+   "choice": "ok",
+   "unknown": [
+    "If stock is short, say so and first ask whether the earliest possible date works; the rest follows from that.",
+    "Order of work: confirm the item first, then check stock, then discount if a discount is called for.",
+    "Never skip the stock check on a re-quote: stock differs at every moment, and other clerks may be selling the same stock."
+   ]
+  }
+ },
+ "done": true,
+ "extra": "",
+ "minutes": "about 10-15 minutes",
+ "updated": "2026-11-02T06:44:21.503Z"
+}

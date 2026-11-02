@@ -153,6 +153,12 @@ def approved_price(state, sku: str, price: float) -> bool:
                for q in state["quotes"].values() for l in q["lines"])
 
 
+def within_authority(listed: float, price: float, authority: float) -> bool:
+    """Is this price within the discount authority, read to the cent? 5% off $4.72 rounds to $4.48, which is 5.1% by
+    division; it is still 5% off (11-02: the desk called it over the authority and the model asked the owner)."""
+    return price >= round(listed * (1 - authority) + 1e-9, 2) - 1e-9
+
+
 def owner_agreed(state, ticket_id: str) -> bool:
     """The owner was asked on this ticket and allows going down to the floor."""
     return ticket_id in state["owner_asked"] and state["owner"].get(ticket_id, {}).get("policy") == "floor_ok"
@@ -212,7 +218,7 @@ def create_quote(state, ticket_id, lines):
         listed = list_price(state, line["sku"], lines)
         if line["unit_price"] < listed - 1e-9 and not approved_price(state, line["sku"], line["unit_price"]):
             off = (listed - line["unit_price"]) / listed
-            if off <= allowed + 1e-9:
+            if within_authority(listed, line["unit_price"], allowed):
                 why = "within your discount authority."
             elif owner_agreed(state, ticket_id):
                 why = "beyond your discount authority; the owner agreed."

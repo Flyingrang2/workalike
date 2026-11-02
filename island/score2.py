@@ -33,7 +33,7 @@ import re
 from collections import Counter
 
 from workalike.desk import cents, customer_prices, unit_price_for
-from workalike.desk2 import QUOTE_ID, approved_price, floor_price
+from workalike.desk2 import QUOTE_ID, approved_price, floor_price, within_authority
 from workalike.filter import clean_episode, episode_meta
 from workalike.record import group_episodes, read_events
 
@@ -69,7 +69,7 @@ def price_problem(task: dict, line: dict, lines: list[dict], owner_ok: bool) -> 
         return f"over list for {sku}"
     if p < floor_price(cost) - 1e-9:
         return f"under the floor for {sku}"
-    if (listed - p) / listed <= g["authority"] + 1e-9 or owner_ok:
+    if within_authority(listed, p, g["authority"]) or owner_ok:
         return None
     return f"discount without authority for {sku}"
 

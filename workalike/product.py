@@ -22,7 +22,7 @@ import secrets
 
 from . import agent
 from .desk import Desk, cents, customer_prices
-from .desk2 import approved_price, floor_price, list_price, owner_agreed, stock_problem
+from .desk2 import approved_price, floor_price, list_price, owner_agreed, stock_problem, within_authority
 from .envs import V2
 
 PRODUCT_SYSTEM = (
@@ -42,6 +42,15 @@ AMOUNT = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?|\.\d+)|(?<![\w.])(\d[\d,]*(?:\.\d
                     re.IGNORECASE)
 QUOTE_ID = re.compile(r"\bQ-\d+-\d+\b", re.IGNORECASE)
 RULE_ID = re.compile(r"\bR(\d+)\b")
+# What a held-back draft is told before it is written again, by the check that failed.
+HINTS = {"답장 초안": "Finish with a reply to the customer or a question to the owner.",
+         "가격은 견적으로만": "Put prices only on an attached quote; a reply without a quote states no price.",
+         "원가 비공개": "Never tell the customer our unit cost.",
+         "금액은 데스크 값": "State only customer prices the desk gave you (list, quote or approved prices), "
+                         "never a cost or the floor price.",
+         "견적번호 확인": "Name only quotes that exist for this ticket or the customer's earlier quotes.",
+         "quote": "Every quote must keep list price or a discount within your authority (or the owner's okay), "
+                  "never under the floor, with stock for each ship date."}
 
 
 def _known_ticket(state, ticket_id):
@@ -84,18 +93,30 @@ def ask_person(state, ticket_id, question):
     return {"status": "asked", "note": "Your question waits for the person at this desk. Your work here ends now."}
 
 
-def _until_stop(handler):
+STREAK = 6  # a ticket has up to 6 lines, so this many calls of one tool in a row can be honest; more is a loop
+
+
+def guarded(name, handler):
+    """Nothing runs once the ticket waits for the person, and a tool called over and over is refused with the way out.
+    A model that forgets its reasoning between turns can walk down a price a cent at a time, or call a broken tool
+    until the turns run out (11-02: 21 quotes on one ticket, 22 calls of a tool that was down)."""
     def run(state, **args):
         if state.get("stop"):
             return {"error": "stopped", "detail": "this ticket is waiting for the person"}
+        streak = state.setdefault("streak", {"name": None, "n": 0})
+        streak.update(name=name, n=streak["n"] + 1 if streak["name"] == name else 1)
+        if streak["n"] > STREAK:
+            return {"error": "repeated_call",
+                    "detail": f"You have called {name} {streak['n'] - 1} times in a row and it will not help. Do not call "
+                              "it again. Reply to the customer, or tell the owner with ask_owner what is blocking you."}
         return handler(state, **args)
     return run
 
 
 PRODUCT_ENV = dataclasses.replace(
     V2, system_prompt=PRODUCT_SYSTEM,
-    handlers={name: _until_stop(h) for name, h in {**V2.handlers, "send_reply": held_reply,
-                                                    "ask_owner": ask_person}.items()})
+    handlers={name: guarded(name, h) for name, h in {**V2.handlers, "send_reply": held_reply,
+                                                     "ask_owner": ask_person}.items()})
 
 
 def prepare(state: dict, ticket_id: str, answers: dict | None = None) -> dict:
@@ -119,11 +140,15 @@ def rules_used(model, messages: list[dict]) -> list[int] | None:
 
 
 def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, max_turns: int = 24,
-         answers: dict | None = None, episode: str | None = None, actor: str = "agent") -> dict:
+         answers: dict | None = None, episode: str | None = None, actor: str = "agent", env=None,
+         ask_used: bool = True) -> dict:
     """Work one request. outcome: draft (a reply waits for approval), asked (a question waits for the person),
     stopped (the model finished with neither: shown as stopped, never as done), max_turns, or error.
-    The recorder, if any, gets one episode of its own (entrance "agent"), apart from the person's records."""
-    desk = Desk(prepare(state, view["ticket_id"], answers), recorder, env=PRODUCT_ENV)
+    The recorder, if any, gets one episode of its own (entrance "agent"), apart from the person's records.
+    env replaces the desk's tools (the failure tests break one); ask_used=False skips the "which rules" call,
+    for text that is not cards."""
+    env = env or PRODUCT_ENV
+    desk = Desk(prepare(state, view["ticket_id"], answers), recorder, env=env)
     if recorder:
         recorder.start(episode or "e-" + secrets.token_hex(5), view, task_id=view["ticket_id"], actor=actor,
                        env=PRODUCT_ENV.version, entrance="agent")
@@ -132,7 +157,7 @@ def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, ma
     def until_held(messages, tools):
         return {"content": "Done."} if desk.state["stop"] else model(messages, tools)
     try:
-        messages, status = agent.run(desk, view, until_held, max_turns, system, env=PRODUCT_ENV)
+        messages, status = agent.run(desk, view, until_held, max_turns, system, env=env)
         error = None
     except Exception as e:  # the job shows where it stopped
         messages, status, error = [], "error", f"{type(e).__name__}: {e}"
@@ -142,7 +167,7 @@ def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, ma
     outcome = ("error" if error else "asked" if s["stop"] == "asked" else "draft" if s["outbox"]
                else "max_turns" if status == "max_turns" else "stopped")
     used = None
-    if rules_text.strip() and messages and outcome in ("draft", "asked"):
+    if ask_used and rules_text.strip() and messages and outcome in ("draft", "asked"):
         try:
             used = rules_used(model, messages)
         except Exception:
@@ -162,7 +187,7 @@ def price_problem(state: dict, ticket_id: str, line: dict, lines: list[dict]) ->
         return f"{sku} 단가가 가격표보다 높습니다"
     if p < floor_price(state["catalog"][sku]["unit_cost"]) - 1e-9:
         return f"{sku} 단가가 최저 허용 단가보다 낮습니다"
-    if (listed - p) / listed <= state["authority"].get(ticket_id, 0.0) + 1e-9 or owner_agreed(state, ticket_id):
+    if within_authority(listed, p, state["authority"].get(ticket_id, 0.0)) or owner_agreed(state, ticket_id):
         return None
     return f"{sku} 할인이 권한을 넘습니다(사장님 동의 없음)"
 
@@ -207,3 +232,17 @@ def guard(state: dict, ticket_id: str, history: list[dict]) -> list[dict]:
         checks.append({"name": f"견적 {qid}", "ok": not problems,
                        "detail": "; ".join(problems) or "가격, 권한, 최저 단가, 출고일별 재고 모두 맞음"})
     return checks
+
+
+def with_one_rewrite(attempt, rules: str):
+    """attempt(rules) -> (job, checks). If the desk's checks hold the draft back, say why and let the model write it
+    once more. Returns (job, checks, first): both drafts are kept, and a second draft that fails stays unapprovable."""
+    done, checks = attempt(rules)
+    failed = [c for c in checks if not c["ok"]]
+    if not failed:
+        return done, checks, None
+    note = ("A draft you wrote for this ticket was held back by the desk's checks. Write it again and "
+            "avoid this: " + " ".join(HINTS.get(c["name"], HINTS["quote"]) for c in failed))
+    first = {"drafts": done["drafts"], "failed": failed, "job": done}
+    done, checks = attempt((rules + "\n\n" + note).strip())
+    return done, checks, first
