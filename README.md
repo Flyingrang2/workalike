@@ -9,7 +9,7 @@ workalike finds them in how you work, asks you only what it can't tell, and trai
 
 In our test on a sample desk, with no rules in its prompt: 0.91% off a pushback where the base model gave 4.94%, a question where it made up a ship date, and about five times the tickets on one GPU, at 41 of 48 right against 45 reading the rules.
 
-- **Try it in your browser, about a minute, nothing to install:** https://flyingrang2.github.io/workalike/ (a written manual on Muse Spark Open; the trained LoRA is recorded beside it and runs on your GPU)
+- **See it in your browser, about a minute, nothing to install:** https://flyingrang2.github.io/workalike/ (one request handled three ways on the same model and GPU: the real recorded runs, played together at 10x)
 - **Watch the three-minute film:** https://youtu.be/nrKQsbhO6Go
 - **Download the LoRA, 419 MB, free:** [latest release](https://github.com/Flyingrang2/workalike/releases/latest)
 - **Check the numbers yourself, no GPU:** [three commands](#check-it-without-a-gpu) and the [evidence page](https://flyingrang2.github.io/workalike/evidence.html)
@@ -67,7 +67,7 @@ The same open model does four jobs in a row: it finds the rules, practises from 
 | Model | How it is used here |
 |---|---|
 | **Muse Glimmer** (open weights, Apache-2.0) | Self-hosted with vLLM on one rented NVIDIA L40S 48 GB (AWS g6e.4xlarge, $3.69 an hour). It finds the rules, practises, is trained with QLoRA, and serves the adapter as the working agent. |
-| **Muse Spark Open** (`meta-models/muse-spark-open-1026`, on Baseten) | Powers the browser demo through partner inference, on the same product path as the desk, so anyone can try it without a GPU. |
+| **Muse Spark Open** (`meta-models/muse-spark-open-1026`, on Baseten) | A hosted version of the written-manual path through partner inference, on the same product path as the desk, built and tested so a shop can start without a GPU. |
 
 ## What we measured
 
@@ -113,7 +113,7 @@ Those are two setups we measured as whole paths, but one comparison isolates the
 - **A person's review changed none of the 10 rules.** What they added was 29 answers. On the first 24 tickets, the rules as found got 23 and 22 right with 1 and 0 dangerous drafts; with the answers added, 23 and 23 with 0 and 0. So the product now applies rules as found and asks only the open points.
 - **Reading the raw records in the prompt is a strong baseline.** On those first tickets, the 60 records in the prompt got 46 of 48 right with 2 dangerous drafts, at 115 seconds and 92,301 tokens a ticket. The written rules got 46 with none, at 197 seconds and 32,544 tokens: about a third of the tokens, and in rules a person can read and edit.
 - **The product's own safety gate:** we ran the product's learning round once on a real GPU. A new adapter only turns on if it adds no dangerous draft on a fixed check. This one had one, and it stayed off. That is a different adapter from the one you can download, which came from the practice script and has not been through this gate ([both side by side](baselines/results/README.md#two-adapters-kept-apart)).
-- **The browser demo:** after the wording was frozen, we tested six manuals on two new tickets, five times each. Muse Spark Open followed the manual in 59 of 60 runs, and the other run stopped without a draft. The LoRA, with no manual, worked the same two tickets on our GPU five times each: 1.06% off every time, and it asked for the date every time ([the runs](baselines/results/demo-lora/results.jsonl)). At three runs at once, the median was about 9 seconds per ticket and the p95 22.5 seconds. Without a manual it took about 5% off. With one, it took 0%, 1.06% or 5.03%, as the manual said. The demo reads a written manual and trains nothing.
+- **The hosted version:** we built the written-manual path on Muse Spark Open through Baseten too. After the wording was frozen, we tested six manuals on two new tickets, five times each. Muse Spark Open followed the manual in 59 of 60 runs, and the other run stopped without a draft. The LoRA, with no manual, worked the same two tickets on our GPU five times each: 1.06% off every time, and it asked for the date every time ([the runs](baselines/results/demo-lora/results.jsonl)). At three runs at once, the median was about 9 seconds per ticket and the p95 22.5 seconds. Without a manual it took about 5% off. With one, it took 0%, 1.06% or 5.03%, as the manual said. The demo reads a written manual and trains nothing.
 - **Development:** 33 GPU jobs were queued through November 2, [listed here](baselines/results/experiments.tsv); 26 finished, one of them a smoke test. The November 3 runs were started by hand and are in their own folders. Results that a bug in the training rows voided were thrown out and are not used here.
 
 Every run behind these tables is in [`baselines/results/`](baselines/results/), with [notes on how to read them](baselines/results/README.md). The frozen sheets and their hashes are next to them in [`baselines/`](baselines/).
@@ -150,9 +150,9 @@ The model server answers only on this machine and sends no usage reports, and [a
 M=~/models/glimmer T=mine TEACHER=my-rules.txt bash scripts/lora_practice.sh runs/my-practice
 ```
 
-## Try-it server
+## The hosted version
 
-The browser demo is [`demo/`](demo/) and [`site/`](site/). Visitors only press buttons, and the server accepts only known picks. It keeps no visitor state, limits runs per address and at once, and keeps its spending count outside the process. If the live model is not there, the page plays a real recorded run of the same picks and says that it is recorded.
+[`demo/`](demo/) turns a visitor's button presses into a written manual and works a ticket on Muse Spark Open. Visitors only press buttons, and the server accepts only known picks. It keeps no visitor state, limits runs per address and at once, and keeps its spending count outside the process. The public page now plays the recorded race instead, because what training adds shows on one model and one GPU.
 
 ```bash
 BASETEN_API_KEY=... python -m demo.server --port 8080
@@ -176,7 +176,7 @@ Eight places, if you have ten minutes.
 ```
 workalike/    the product: desk, recorder, rule book, agent path, checks, screens, learning round; python -m workalike
 testbed/      the test bed: ticket generators, answer sheets, grader, practice (map in testbed/README.md)
-demo/         the try-it server and its evaluation
+demo/         the hosted version, its evaluation and its browser client
 site/         the public page and the evidence page
 scripts/      GPU setup, serving, training, the test runs, check_numbers
 baselines/    frozen sheets, their hashes, written rules, results

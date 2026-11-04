@@ -1,5 +1,5 @@
 """The browser demo's two new tickets, worked by Muse Glimmer with the LoRA and no rules in its prompt, on your GPU.
-The page shows these recorded runs beside the live ones, because a browser visitor has no GPU to run the LoRA on.
+The hosted client showed these recorded runs beside the live ones, because a browser visitor has no GPU to run the LoRA on.
 
     python -m demo.lora_run --out runs/demo-lora --rounds 5     # with scripts/serve.sh running and the adapter loaded
 """

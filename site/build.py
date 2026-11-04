@@ -19,9 +19,8 @@ FILM = '<div class="frame">The film goes here.</div>'
 HEAD = '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n{head}\n</head>\n<body>\n{body}\n</body>\n</html>\n'
 FILES = (
     "style.css",
-    "try.js",
+    "race.js",
     "runs.js",
-    "recorded.json",
     "art-phone.png",
     "art-prism.webp",
     "art-office.webp",
@@ -184,41 +183,49 @@ def runs_json():
     return {"tickets": tickets, "runs": runs}
 
 
-def lora_steps(run):
-    """The first run's steps in the words the live columns use. A rewritten run keeps the first try's calls with their
-    arguments; otherwise only the tool names are on record, so those lines say less. The order is real; the page spaces
-    them evenly, because the time of each step was not recorded."""
+def race_steps(run):
+    """Every tool call of a run in the order it happened, the first try included, in the words of step_text."""
     sys.path.insert(0, str(ROOT))
     from demo.work import step_text
 
-    first = run.get("first")
-    known = first["calls"] if first else []
-    steps = [{"text": step_text(c["name"], c["args"], c["result"])} for c in known]
-    if first:
-        steps.append({"text": "The desk's checks held that draft back, so it is writing it again", "held": True})
-    for i, name in enumerate(run["tools"]):
-        call = known[i] if i < len(known) and known[i]["name"] == name else {"args": {}, "result": {}}
-        result = {"quote_id": run["quote_id"]} if name == "create_quote" else call["result"]
-        steps.append({"text": step_text(name, call["args"], result)})
-    return steps
+    def said(calls):
+        return [{"text": step_text(c["name"], c["args"], c["result"])} for c in calls]
+
+    first = run["first"]
+    held = [{"text": "The desk's checks held that draft back, so it is writing it again", "held": True}]
+    return (said(first["calls"]) + held if first else []) + said(run["calls"])
 
 
-def lora_runs():
-    """The LoRA on the browser demo's own two requests, as recorded. The page plays the first run and says how many agree."""
-    rows_ = rows(ROOT / "baselines/results/demo-lora/results.jsonl")
-    out = {}
-    for kind in ("price", "date"):
-        mine = [r for r in rows_ if r["kind"] == kind]
-        same = sum(r["off"] == mine[0]["off"] and not r["lines"] == (kind == "price") for r in mine)
-        out[kind] = {
-            "off": mine[0]["off"],
-            "same": same,
-            "runs": len(mine),
-            "seconds": round(sum(r["seconds"] for r in mine) / len(mine)),
-            "message": mine[0]["message"],
-            "steps": lora_steps(mine[0]),
-        }
-    return out
+def race():
+    """The three runs the page plays together: one ticket from the main test, first round, as recorded."""
+    runs = {r["arm"]: r for r in rows(ROOT / "baselines/results/test24b/race.jsonl")}
+    task = next(t for t in rows(ROOT / "baselines/test24b/tickets.jsonl") if t["task_id"] == runs["none"]["task_id"])
+    out = []
+    for arm in ("none", "checked", "p-checked"):
+        r = runs[arm]
+        draft = r["drafts"][0]
+        listed = r["quotes"][min(r["quotes"])]["lines"][0]
+        price = r["quotes"][draft["quote_id"]]["lines"][0]["unit_price"]
+        out.append(
+            {
+                "arm": arm,
+                "seconds": round(r["seconds"]),
+                "off": round((1 - price / listed["unit_price"]) * 100, 2),
+                "tokens": r["completion_tokens"],
+                "draft": draft["message"],
+                "steps": race_steps(r),
+            }
+        )
+    return {
+        "ticket": {
+            "from": task["view"]["from"],
+            "body": task["view"]["body"],
+            "fact": f"Earlier the shop quoted {listed['qty']} v-neck t-shirts at list price, ${listed['unit_price']:.2f} each. "
+            f"Up to {task['view']['authority'] * 100:.0f}% off is allowed.",
+            "rule": "On a re-quote, when the customer explicitly asks for a lower price, give the smallest discount.",
+        },
+        "runs": out,
+    }
 
 
 def prompts_html():
@@ -269,9 +276,7 @@ def main():
     page("evidence.html", out, a.film)
     for f in FILES:
         shutil.copy(HERE / f, out / f)
-    recorded = json.loads((HERE / "recorded.json").read_text())
-    recorded["lora"] = lora_runs()
-    (out / "recorded.json").write_text(json.dumps(recorded, ensure_ascii=False, separators=(",", ":")))
+    (out / "race.json").write_text(json.dumps(race(), ensure_ascii=False, separators=(",", ":")))
     (out / "runs.json").write_text(json.dumps(runs_json(), ensure_ascii=False, separators=(",", ":")))
     print(out / "index.html")
 

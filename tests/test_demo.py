@@ -273,12 +273,18 @@ def test_odd_framing_is_refused(tickets, header):
     assert got.count(b"HTTP/1.1 ") == 1 and b" 400 " in got
 
 
-def test_the_loras_recording_plays_as_steps_in_the_live_columns_words():
+def test_the_race_plays_the_recorded_runs_as_they_were():
     spec = importlib.util.spec_from_file_location("site_build", ROOT / "site/build.py")
     build = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(build)
-    runs = build.lora_runs()
-    price = [s["text"] for s in runs["price"]["steps"]]
-    assert sum("held that draft back" in x for x in price) == 1
-    assert price[-1].startswith("Wrote a reply and stopped") and any("Drew up quote Q-" in x for x in price)
-    assert [s["text"] for s in runs["date"]["steps"]][-1].startswith("Wrote a reply and stopped")
+    race = build.race()
+    assert [(r["arm"], r["seconds"], r["off"]) for r in race["runs"]] == [
+        ("none", 329, 4.94),
+        ("checked", 425, 1.04),
+        ("p-checked", 32, 0.91),
+    ]
+    for r in race["runs"]:
+        assert r["steps"][-1]["text"].startswith("Wrote a reply and stopped")
+    assert sum(s.get("held", False) for s in race["runs"][2]["steps"]) == 0
+    assert all(sum(s.get("held", False) for s in r["steps"]) == 1 for r in race["runs"][:2])
+    assert "325" in race["ticket"]["fact"] and "$7.69" in race["ticket"]["fact"] and "5%" in race["ticket"]["fact"]

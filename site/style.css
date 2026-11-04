@@ -28,7 +28,7 @@ p { margin: 0; }
 .second { font-size: 1.2em; line-height: 1.5; max-width: 46ch; color: var(--pencil); }
 .hero-art { width: 100%; height: auto; display: block; }
 
-.film { display: grid; gap: 12px; margin-top: calc(clamp(64px, 9vw, 112px) * -0.45); }
+.film { display: grid; gap: 12px; }
 .film video, .film .frame { width: 100%; aspect-ratio: 16 / 9; display: block; background: var(--wash); object-fit: cover; }
 .film .frame { display: grid; place-items: center; text-align: center; padding: 24px; font: 400 1.6rem/1.3 var(--hand); color: var(--pencil); }
 .film figcaption { color: var(--pencil); font-size: 0.95em; }
@@ -282,3 +282,52 @@ h1, h2 { letter-spacing: -0.018em; }
 
 .teacher { font: 400 1.5rem/1.2 var(--hand); }
 details.rules .prose { padding-block: 10px 6px; }
+
+/* The race: three plain work cards, started together. The numbers read like instruments; the notebook stays handwritten. */
+main > .hero { padding-top: clamp(24px, 3.5vw, 44px); }
+.hero h1 { font-size: clamp(2.2rem, 4vw, 3.1rem); }
+.hero .lead { gap: 14px; }
+.hero-art.hero-art { max-width: 300px; width: 100%; margin-left: 0; justify-self: end; }
+.hero .second { font-size: 1.1em; max-width: 56ch; }
+.race-section { margin-top: calc(clamp(64px, 9vw, 112px) * -0.72); }
+.race-section .try-head { max-width: none; gap: 6px; margin-bottom: 14px; }
+.race-section h2 { font-size: clamp(1.7rem, 3.1vw, 2.4rem); }
+.race-top .desk, .race-top .note { padding: clamp(14px, 1.8vw, 22px); }
+.race-top .desk { gap: 10px; }
+.race-top .mail { padding: 10px 14px; }
+.race-top .fact { font-size: .95em; color: var(--pencil); }
+.race-top .desk { min-height: 0; }
+.race-top .note { --l: 1.7rem; }
+.race-top .note h3 { font-size: 1.5rem; margin-bottom: var(--l); }
+.race-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; }
+.quiet-button { font: inherit; color: var(--orange-ink); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.quiet-button[hidden] { display: none; }
+.quiet-button:hover:not(:disabled) { background: none; color: var(--ink); }
+#race { display: grid; gap: 16px; overflow-anchor: none; }
+#race .verdict { max-width: none; min-height: 0; }
+.arms.arms { align-items: stretch; }
+.racer { align-content: start; grid-template-rows: auto auto minmax(4.6em, auto) auto; }
+.racer h3 { font: 600 1.1rem/1.3 var(--body); }
+.racer .sub { margin-top: 2px; }
+.racer .clock { font: 600 clamp(2.2rem, 4vw, 3rem)/1 var(--body); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.racer.done .clock { color: var(--ink); }
+.lora.racer .clock, .lora.racer .off { color: var(--orange-ink); }
+.result { display: grid; gap: 4px; align-content: start; }
+.off { font: 600 1.5rem/1.2 var(--body); font-variant-numeric: tabular-nums; width: fit-content; background: linear-gradient(var(--line, var(--ink)), var(--line, var(--ink))) 0 100% / 0 2px no-repeat; animation: pencil-under .28s ease-out .05s forwards; }
+@keyframes pencil-under { to { background-size: 100% 2px; } }
+.result-note { color: var(--pencil); font-size: .92em; line-height: 1.4; }
+.result summary { cursor: pointer; color: var(--pencil); font-size: .92em; }
+.result .draft { margin-top: 8px; }
+.trade { display: grid; gap: 12px; margin-top: 36px; }
+.trade table { min-width: 0; }
+.trade-line { font-weight: 600; }
+.why-recorded { color: var(--pencil); max-width: 72ch; }
+@media (max-width: 860px) {
+  .hero-art { display: none; }
+  .racer { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; gap: 6px 12px; padding: 14px; }
+  .racer-head { grid-column: 1; }
+  .racer .clock { grid-column: 2; grid-row: 1; font-size: 2rem; align-self: center; }
+  .result { grid-column: 1 / -1; }
+  .racer .steps { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .off { animation: none; background-size: 100% 2px; } }

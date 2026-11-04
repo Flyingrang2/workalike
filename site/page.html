@@ -1,7 +1,7 @@
 <title>workalike</title>
-<meta name="description" content="The agent that learns the rules nobody wrote down. Try it in your browser, or download the LoRA version for your own GPU.">
+<meta name="description" content="The agent that learns the rules nobody wrote down. Watch one request handled three ways on the same Muse Glimmer model and GPU, or download the LoRA.">
 <meta property="og:title" content="workalike: the agent that learns the rules nobody wrote down">
-<meta property="og:description" content="Try it in your browser in about a minute, or download the LoRA version for your own GPU. Built on Meta's open models.">
+<meta property="og:description" content="Watch one request handled three ways on the same Muse Glimmer model and GPU, or download the LoRA. Built on Meta's open models.">
 <meta property="og:image" content="https://flyingrang2.github.io/workalike/og.jpg">
 <meta property="og:url" content="https://flyingrang2.github.io/workalike/">
 <meta property="og:type" content="website">
@@ -16,33 +16,46 @@
     <div class="lead">
       <h1>The agent that learns the rules nobody wrote down.</h1>
       <p class="second">workalike finds them in how you work, asks you only what it can't tell, and trains them into an open Muse Glimmer model that stays on your own GPU.</p>
-      <p class="person">When the person who knows a job is away, the colleague covering gets drafts done that person's way, and approves them.</p>
-      <p class="links"><a class="button first" href="#try-title">Try it</a> <a class="button" href="#film">Watch the film</a> <a class="button" href="evidence.html">Check the numbers</a></p>
-      <p class="today">In our test on one sample quote desk, with made-up tickets and no rules in its prompt: 0.91% off a pushback where the base model gave 4.94%, a question where it made up a ship date, and about five times the tickets on one GPU, at 41 of 48 right against 45 reading the rules. Built solo during the Meta Global AI Developer Hackathon.</p>
+      <p class="links"><a class="button" href="#film">Watch the film</a> <a class="button" href="evidence.html">Check the numbers</a></p>
     </div>
     <img class="hero-art" src="art-phone.png" width="1000" height="454" alt="A phone ringing on an empty desk, drawn in pencil">
   </header>
+
+  <section class="race-section" aria-labelledby="race-title">
+    <div class="try-head">
+      <h2 id="race-title">Same request. Three ways to handle it.</h2>
+      <p>Same model, Muse Glimmer. Same GPU, one NVIDIA L40S. Same customer pushing back. The real recorded runs from our test, played together at 10x.</p>
+    </div>
+    <div id="race"><p>Loading the race.</p></div>
+    <div class="trade">
+      <h3 class="how">The same three across the whole test</h3>
+      <div class="table-wrap">
+        <table>
+          <caption>24 new tickets, each run twice. Averages, not the race above.</caption>
+          <thead><tr><th scope="col"></th><th scope="col">Muse Glimmer out of the box</th><th scope="col">Reading the written rules</th><th scope="col" class="ours">LoRA, no rules in its prompt</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Seconds per ticket</th><td>167</td><td>181</td><td class="ours">29</td></tr>
+            <tr><th scope="row">Right, of 48</th><td>37</td><td>45</td><td class="ours">41</td></tr>
+            <tr><th scope="row">Dangerous drafts</th><td>7</td><td>0</td><td class="ours">1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="trade-line">About six times faster than reading the rules, at 41 of 48 right against 45. Every draft waits for a person's approval.</p>
+      <p class="why-recorded">Why recordings? The LoRA needs a 48GB GPU, and we don't keep one running for a web page. These are the real runs: <a href="evidence.html#runs?key=discount-authority-yes">read all six runs of this ticket</a>, or <a href="#download">download the LoRA</a> and run it yourself.</p>
+    </div>
+  </section>
 
   <figure class="film" id="film">
     <div class="drawn"><!--FILM--></div>
     <figcaption>Three minutes. The numbers in it come from the tests further down this page.</figcaption>
   </figure>
 
-  <section aria-labelledby="try-title">
-    <div class="try-head">
-      <h2 id="try-title">Try it</h2>
-      <p>Handle two sample requests your way. Your picks are written up as a manual, and a live model works a new request with it and without it. That is the written-rules way. The third column is the trained way, recorded on our GPU, with no manual in its prompt. About a minute, no install.</p>
-    </div>
-    <div id="try"><p>Loading the desk.</p></div>
-    <p class="try-foot">Muse Spark Open, a hosted open-weight model, on made-up tickets. You type nothing.</p>
-  </section>
-
   <section class="section" id="what" aria-labelledby="what-title">
     <h2 id="what-title">What it does</h2>
     <div class="prose">
-      <p>Nobody has to write a manual first. The person who knows the job works as usual with recording on, and answers only what the records could not settle: in our test, 29 short answers in about 10 to 15 minutes, by their own estimate.</p>
+      <p>When the person who knows a job is away, the colleague covering gets drafts done that person's way, and approves them. Nobody has to write a manual first. The person who knows the job works as usual with recording on, and answers only what the records could not settle: in our test, 29 short answers in about 10 to 15 minutes, by their own estimate.</p>
     </div>
-    <h3 class="how">One rule's trip, from our test</h3>
+    <h3 class="how">How that ticket got to 0.91%</h3>
     <div class="prose"><p>In the records the worker took about 5% off. The person said "the smallest discount". With no rules in its prompt, the LoRA took 0.91%.</p></div>
     <div class="trip">
       <div class="leg drawn">
@@ -59,7 +72,7 @@
         <h4>LoRA, no rules in its prompt</h4>
         <p>A new ticket: "Hmm, that's quite a bit more than last time (Q-6676). Is there anything you can do on the price?"</p>
         <p class="big">0.91% off, 32 seconds</p>
-        <p>That is the first of two runs. In the same run, the model out of the box took 4.94% off in 329 seconds, and reading the written rules took 1.04% off in 425.</p>
+        <p>That is the race at the top of this page. In the same run, the model out of the box took 4.94% off in 329 seconds, and reading the written rules took 1.04% off in 425.</p>
         <p><a href="evidence.html#runs?key=discount-authority-yes">Read all six runs of this ticket</a></p>
       </div>
     </div>
@@ -93,8 +106,8 @@
     </div>
     <div class="prose">
       <p><b>The rule book stays the source of truth, and the adapter is a replaceable, learned version of it.</b> Change a rule and the adapter turns off until it has learned the change. On the running desk, two requests went from 59 seconds to 535 and from 13 to 70 after a rule changed, because the model was reading the written rules again.</p>
-      <p>A model behind an API can follow a written manual, as the box above shows. Open weights are what let us train the rules in ourselves, serve an adapter for each person on one GPU, and keep the records there.</p>
-      <p>Muse Spark Open, hosted by Baseten, has a different job: it powers the box above, so anyone can try the idea without a GPU.</p>
+      <p>A model behind an API can follow a written manual. Open weights are what let us train the rules in ourselves, serve an adapter for each person on one GPU, and keep the records there.</p>
+      <p>We also built a hosted version on Muse Spark Open through Baseten, where a written manual is the whole method. It followed the manual in 59 of 60 runs. The race above shows what training adds.</p>
     </div>
   </section>
 
@@ -196,4 +209,4 @@ bash scripts/run_lora.sh</code></pre>
   </section>
 </main>
 <footer>Built solo during the Meta Global AI Developer Hackathon; the first commit is from October 27, 2026. Muse Glimmer and Muse Spark Open are Meta's open-weight models. workalike is not made by Meta. <a href="evidence.html">Evidence</a>. <a href="https://github.com/Flyingrang2/workalike/blob/main/CREDITS.md">Credits</a>.</footer>
-<script src="try.js"></script>
+<script src="race.js"></script>

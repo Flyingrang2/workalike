@@ -1,7 +1,7 @@
 """The recorded runs the page plays when the live model is not there: one real run per set of picks, taken from the final
 evaluation in order, the first that followed the manual. The page labels them recorded.
 
-    python -m demo.bank --results runs/demo-final/results.jsonl --out site/recorded.json
+    python -m demo.bank --results runs/demo-final/results.jsonl --out demo/client/recorded.json
 """
 
 import argparse
