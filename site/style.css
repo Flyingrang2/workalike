@@ -303,7 +303,7 @@ main > .hero { padding-top: clamp(24px, 3.5vw, 44px); }
 .quiet-button { font: inherit; color: var(--orange-ink); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .quiet-button[hidden] { display: none; }
 .quiet-button:hover:not(:disabled) { background: none; color: var(--ink); }
-#race { display: grid; gap: 16px; overflow-anchor: none; }
+#race { display: grid; gap: 16px; }
 #race .verdict { max-width: none; min-height: 0; }
 .arms.arms { align-items: stretch; }
 .racer { align-content: start; grid-template-rows: auto auto minmax(4.6em, auto) auto; }
