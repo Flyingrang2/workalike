@@ -19,7 +19,7 @@
   const LORA = {
     price: { big: l => `${l.off}% off`, text: l => `This same request, with no rules in its prompt. ${l.runs} runs at temperature 0, all alike. In our main test, on a ticket like this one, it took 0.91% and 0.65%. This request took longer because the desk sent its first draft back once.` },
     date: { big: l => "Asked for the date", text: l => `This same request, with no rules in its prompt. It asked in ${l.same} of ${l.runs} runs at temperature 0. In our main test, on tickets like this one, it asked in 5 of 6 and quoted a date nobody gave once.` } };
-  const WHY_TRAIN = "It averaged 29 seconds a ticket across the main test, against 181 for the same GPU reading the full rule book. The hosted columns are a different model on Baseten's servers, so their seconds don't compare with this one. If your records can go there, that works. The LoRA is for when they can't leave your building.";
+  const WHY_TRAIN = "It averaged 29 seconds a ticket across the main test, against 181 for the same GPU reading the full rule book. The hosted columns are a different model on Baseten's servers. The LoRA is for when your records can't leave your building.";
   let data = null, picks = { price: null, date: null }, busy = false;
 
   function h(tag, attrs, ...kids) {

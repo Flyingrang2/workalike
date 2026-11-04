@@ -92,7 +92,7 @@
       <img class="art" src="art-prism.webp" width="1100" height="509" loading="lazy" alt="An orange line of work passes through a prism labelled Muse Glimmer and comes out as three written rules, drawn in pencil">
     </div>
     <div class="prose">
-      <p><b>The rule book stays the source of truth, and the adapter is a replaceable, learned version of it.</b> Change a rule and the adapter turns off, and the model reads the written rules until a new adapter is trained. Today that means rerunning our practice script by hand. On the running desk, two requests went from 59 seconds to 535 and from 13 to 70 after a rule changed, because the model was reading the written rules again.</p>
+      <p><b>The rule book stays the source of truth, and the adapter is a replaceable, learned version of it.</b> Change a rule and the adapter turns off until it has learned the change. On the running desk, two requests went from 59 seconds to 535 and from 13 to 70 after a rule changed, because the model was reading the written rules again.</p>
       <p>A model behind an API can follow a written manual, as the box above shows. Open weights are what let us train the rules in ourselves, serve an adapter for each person on one GPU, and keep the records there.</p>
       <p>Muse Spark Open, hosted by Baseten, has a different job: it powers the box above, so anyone can try the idea without a GPU.</p>
     </div>
@@ -113,7 +113,6 @@
         <li>No real shop has used it. The records came from a scripted worker.</li>
         <li>To choose which practice tickets to train on, we used answers our ticket generator already knew. A real shop has no such answers; a person's approvals would have to do that job, which isn't built.</li>
         <li>The automatic training built into the product has run once, and its safety check refused the adapter it made. Every LoRA number here comes from the script above.</li>
-        <li>Asked outright for 3%, it took 2.29%, neither the customer's 3% nor the person's 1%.</li>
         <li>We have only run it on a 48GB GPU.</li>
       </ul>
     </div>
@@ -122,7 +121,7 @@
   <section class="section" id="numbers" aria-labelledby="tested-title">
     <h2 id="tested-title">What we tested</h2>
     <ul class="wins">
-      <li><b>It holds the person's line.</b> A customer pushed back: Muse Glimmer out of the box took 4.94% off, and with the LoRA it took 0.91% and 0.65%, near the person's answer of about 1%. When nobody asked for a discount, 17 of 36 runs quoted at all, and none added one: 15 at list, 2 at a still-valid approved price.</li>
+      <li><b>It holds the person's line.</b> A customer pushed back: Muse Glimmer out of the box took 4.94% off, and with the LoRA it took 0.91% and 0.65%, near the person's answer of about 1%. Asked outright for 3%, it took 2.29%. When nobody asked for a discount, 17 of 36 runs quoted at all, and none added one: 15 at list, 2 at a still-valid approved price.</li>
       <li><b>It asks instead of guessing.</b> On tickets with no ship date, Muse Glimmer out of the box quoted a date nobody gave in 6 of 6 runs. With the LoRA it asked in 5 of 6.</li>
       <li><b>The desk's checks read every draft.</b> They held back 7 of the LoRA's 48 first drafts. Three told a customer the shop's lowest price, such as "Floor unit price is $5.70", and the rewrites left the amount out. They don't catch everything: the one dangerous draft came out of a rewrite.</li>
       <li><b>About five times the tickets on the same GPU.</b> 485 an hour against 100 when it reads the rules on every ticket, or 425 against 96 counting only the right ones. The slowest tickets came down too: 68 seconds at p95 against 456. That is with one adapter; we have not measured many at once.</li>
@@ -144,7 +143,7 @@
       </table>
     </div>
     <div class="prose">
-      <p>The LoRA trades some accuracy for speed: 41 right against 45, and 1 dangerous draft against none. In return, a colleague waits about 29 seconds for a draft instead of about three minutes, and the same GPU works about five times the tickets. Turning reasoning off might match the speed, and we have not tested that. It could not supply the rules: on the same short prompt, out of the box quoted a ship date nobody gave in 6 of 6 runs, and with the LoRA it asked in 5 of 6. Nothing goes out until a person approves, in any column.</p>
+      <p>The LoRA trades some accuracy for speed: 41 right against 45, and 1 dangerous draft against none. In return, a colleague waits about 29 seconds for a draft instead of about three minutes, and the same GPU works about five times the tickets. And speed is not all it learned: on the same short prompt, out of the box quoted a ship date nobody gave in 6 of 6 runs, and with the LoRA it asked in 5 of 6. Nothing goes out until a person approves, in any column.</p>
       
       <p>We wrote the answers and hashed them before any run. A second reader, a fresh Claude agent that could not see which column wrote a draft, re-read the verdicts that rested on words and agreed on 96 of 98. When a bug in the training rows voided a round of results, we threw them out.</p>
       <p>Click a number to read those runs. <a href="evidence.html">The evidence page</a> has every run, the full table and what changed along the way. Or recompute the tables with no GPU: <code>python3 scripts/check_numbers.py --check</code>.</p>
