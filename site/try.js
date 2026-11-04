@@ -17,8 +17,9 @@
                    ask: "ask for the date", earliest: "quote your earliest date" };
   /* Recorded on our GPU, on these same two requests; build.py adds the runs to recorded.json as data.lora. */
   const LORA = {
-    price: { big: l => `${l.off}% off`, text: l => `This same request, with no rules in its prompt. ${l.runs} runs at temperature 0, all alike. In our main test, on a ticket like this one, it took 0.91% and 0.65%. This request took longer because the desk sent its first draft back once.` },
+    price: { big: l => `${l.off}% off`, text: l => `This same request, with no rules in its prompt. ${l.runs} runs at temperature 0, all alike. In our main test, on a ticket like this one, it took 0.91% and 0.65%.` },
     date: { big: l => "Asked for the date", text: l => `This same request, with no rules in its prompt. It asked in ${l.same} of ${l.runs} runs at temperature 0. In our main test, on tickets like this one, it asked in 5 of 6 and quoted a date nobody gave once.` } };
+  const LORA_SPEED = 3; /* the recording plays faster than it ran, and the column says so; its clock counts the time it took */
   const WHY_TRAIN = "It averaged 29 seconds a ticket across the main test, against 181 for the same GPU reading the full rule book. The hosted columns are a different model on Baseten's servers. The LoRA is for when your records can't leave your building.";
   let data = null, picks = { price: null, date: null }, busy = false;
 
@@ -130,6 +131,20 @@
       all.forEach((e, i) => setTimeout(() => { on(e); if (i === all.length - 1) res(); }, quiet ? 0 : e.t * 1000));
     });
   }
+  function playback(col, ticket) {
+    const l = data.lora[ticket], gap = quiet ? 0 : l.seconds * 1000 / LORA_SPEED / (l.steps.length + 1), start = performance.now();
+    const tick = quiet ? null : setInterval(() => { col.clock.textContent = `${Math.round((performance.now() - start) * LORA_SPEED / 1000)} seconds`; }, 250);
+    l.steps.forEach((s, i) => setTimeout(() => col.steps.append(h("li", { class: s.held ? "was-held" : null }, s.text)), gap * (i + 1)));
+    return new Promise(res => setTimeout(() => {
+      clearInterval(tick);
+      col.clock.textContent = `${l.seconds} seconds`;
+      fill(col.end, h("p", { class: "big" }, LORA[ticket].big(l)), h("blockquote", { class: "draft" }, l.message),
+           h("p", { class: "held" }, "Held for your approval. Nothing was sent."),
+           h("p", {}, LORA[ticket].text(l), " ", WHY_TRAIN),
+           h("p", { class: "aside" }, "That LoRA learned one person's way: the smallest discount. ", h("a", { href: "#numbers" }, "See all 24 tickets.")));
+      res();
+    }, gap * (l.steps.length + 1)));
+  }
   async function flip(ticket, sw) {
     if (busy) return;
     busy = true;
@@ -137,16 +152,15 @@
     sw.classList.add("on");
     sw.disabled = true;
     const without = column("No manual", "Muse Spark Open"), mine = column("Your manual", "Muse Spark Open, same request");
-    const lora = h("section", { class: "arm lora drawn" }, h("h3", {}, "Trained, no manual"), h("p", { class: "sub" }, `Muse Glimmer with the LoRA, recorded on our GPU, ${data.lora[ticket].seconds} seconds`),
-                   h("p", { class: "big" }, LORA[ticket].big(data.lora[ticket])), h("p", {}, LORA[ticket].text(data.lora[ticket]), " ", WHY_TRAIN),
-                   h("blockquote", { class: "draft" }, data.lora[ticket].message),
-                   h("p", { class: "aside" }, "That LoRA learned one person's way: the smallest discount. ", h("a", { href: "#numbers" }, "See all 24 tickets.")));
+    const lora = column("Trained, no manual", `Muse Glimmer with the LoRA, recorded on our GPU, played at ${LORA_SPEED}x.`);
+    lora.el.classList.add("lora");
     const mode = h("p", { class: "mode" }, "Live on Muse Spark Open, served by Baseten.");
     const verdict = h("p", { class: "verdict" }), after = h("div", { class: "after" });
-    results.replaceChildren(mode, verdict, h("div", { class: "arms" }, without.el, mine.el, lora), after);
+    results.replaceChildren(mode, verdict, h("div", { class: "arms" }, without.el, mine.el, lora.el), after);
     results.scrollIntoView({ behavior: quiet ? "auto" : "smooth", block: "nearest" });
     const cols = { none: without, manual: mine }, ends = {};
     const start = performance.now();
+    const replay = playback(lora, ticket);
     const tick = setInterval(() => { for (const [k, c] of Object.entries(cols)) if (!ends[k]) c.clock.textContent = `${Math.round((performance.now() - start) / 1000)} seconds`; }, 1000);
     const on = e => {
       const c = cols[e.arm];
@@ -164,6 +178,7 @@
       await recorded(ticket, on);
     }
     clearInterval(tick);
+    await replay;
     verdict.textContent = `You said to ${PICKED[ticket === "price" ? picks.price : picks.date]}. With your manual it ${said(ticket, ends.manual)}. Without it, it ${said(ticket, ends.none)}.`;
     after.replaceChildren(
       h("button", { type: "button", onclick: () => { results.replaceChildren(); first("price", 1); } }, "Change my answers"),

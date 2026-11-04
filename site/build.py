@@ -184,8 +184,27 @@ def runs_json():
     return {"tickets": tickets, "runs": runs}
 
 
+def lora_steps(run):
+    """The first run's steps in the words the live columns use. A rewritten run keeps the first try's calls with their
+    arguments; otherwise only the tool names are on record, so those lines say less. The order is real; the page spaces
+    them evenly, because the time of each step was not recorded."""
+    sys.path.insert(0, str(ROOT))
+    from demo.work import step_text
+
+    first = run.get("first")
+    known = first["calls"] if first else []
+    steps = [{"text": step_text(c["name"], c["args"], c["result"])} for c in known]
+    if first:
+        steps.append({"text": "The desk's checks held that draft back, so it is writing it again", "held": True})
+    for i, name in enumerate(run["tools"]):
+        call = known[i] if i < len(known) and known[i]["name"] == name else {"args": {}, "result": {}}
+        result = {"quote_id": run["quote_id"]} if name == "create_quote" else call["result"]
+        steps.append({"text": step_text(name, call["args"], result)})
+    return steps
+
+
 def lora_runs():
-    """The LoRA on the browser demo's own two requests, as recorded. The page shows the first run and how many agree."""
+    """The LoRA on the browser demo's own two requests, as recorded. The page plays the first run and says how many agree."""
     rows_ = rows(ROOT / "baselines/results/demo-lora/results.jsonl")
     out = {}
     for kind in ("price", "date"):
@@ -197,6 +216,7 @@ def lora_runs():
             "runs": len(mine),
             "seconds": round(sum(r["seconds"] for r in mine) / len(mine)),
             "message": mine[0]["message"],
+            "steps": lora_steps(mine[0]),
         }
     return out
 

@@ -1,5 +1,6 @@
 """The try-it server with a scripted model: known picks only, limits before any model, nothing hidden on the wire."""
 
+import importlib.util
 import json
 import socket
 import threading
@@ -7,6 +8,7 @@ import time
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +16,8 @@ from demo.manual import DATE, PRICE, manual
 from demo.server import Limits, Meter, handler, load_tickets
 from demo.work import Budgeted, dangerous, follows, step_text
 from workalike.model_client import ChatModel
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def call(name, **args):
@@ -267,3 +271,14 @@ def test_odd_framing_is_refused(tickets, header):
     got = _raw(url, b"POST /run HTTP/1.1\r\nHost: x\r\n" + header + b"\r\n\r\n")
     server.shutdown()
     assert got.count(b"HTTP/1.1 ") == 1 and b" 400 " in got
+
+
+def test_the_loras_recording_plays_as_steps_in_the_live_columns_words():
+    spec = importlib.util.spec_from_file_location("site_build", ROOT / "site/build.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    runs = build.lora_runs()
+    price = [s["text"] for s in runs["price"]["steps"]]
+    assert sum("held that draft back" in x for x in price) == 1
+    assert price[-1].startswith("Wrote a reply and stopped") and any("Drew up quote Q-" in x for x in price)
+    assert [s["text"] for s in runs["date"]["steps"]][-1].startswith("Wrote a reply and stopped")
