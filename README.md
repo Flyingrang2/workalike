@@ -7,7 +7,7 @@
 
 workalike finds them in how you work, asks you only what it can't tell, and trains them into an open Muse Glimmer model that stays on your own GPU.
 
-In our test on a sample desk: about five times the tickets on one GPU, and 41 of 48 right against 45 when the model reads the rules on every ticket.
+In our test on a sample desk, with no rules in its prompt: 0.91% off a pushback where the base model gave 4.94%, a question where it made up a ship date, and about five times the tickets on one GPU, at 41 of 48 right against 45 reading the rules.
 
 - **Try it in your browser, about a minute, nothing to install:** https://flyingrang2.github.io/workalike/ (a written manual on Muse Spark Open; the trained LoRA is recorded beside it and runs on your GPU)
 - **Watch the three-minute film:** https://youtu.be/nrKQsbhO6Go
@@ -54,7 +54,7 @@ flowchart LR
 5. **It learns.** A QLoRA run puts that behavior into a per-person adapter on Muse Glimmer.
 6. **It works, and stops.** A reply to a customer is held as a draft, and a question goes to you. Nothing goes out until a person approves. The desk's own checks read every draft against the desk's numbers, not the model's word for it.
 
-**The rule book stays the source of truth, and the adapter is a replaceable, learned version of it.** When you change a rule, the adapter turns off and the agent reads the written rules until it has learned the change. Every rule and draft says which version it came from.
+**The rule book stays the source of truth, and the adapter is a replaceable, learned version of it.** When you change a rule, the adapter turns off and the agent reads the written rules until a new adapter is trained. Today that means rerunning our practice script by hand. Every rule and draft says which version it came from.
 
 We ran the whole path on the sample desk: 60 tickets from a scripted worker, 10 rules found by Muse Glimmer, 29 open points answered by a person, 173 practice tickets, and a trained adapter. Practice is a separate script so far (`testbed/practice.py`), because it grades its tickets with answers from our ticket generator; none of those tickets is in the test. A script connected steps 4 and 5. The automatic training built into the product (`workalike.autolearn`) trains from a person's records directly, a different method, and has run once.
 
@@ -71,7 +71,7 @@ The same open model does four jobs in a row: it finds the rules, practises from 
 
 ## What we measured
 
-One person spent about 10 to 15 minutes, by their own estimate, answering 29 questions. After about two hours and about $8 of GPU time (about $10 with one step rerun), Muse Glimmer was working by those rules with none in its prompt.
+One person, the founder, spent about 10 to 15 minutes, by their own estimate, answering 29 questions. After about two hours and about $8 of GPU time (about $10 with one step rerun), Muse Glimmer was working by those rules with none in its prompt.
 
 We evaluated on 24 unseen tickets, with the answer sheet written and hashed before any run. Each column ran twice, end to end through the product's own agent loop and tools, on one server at six runs at once. Temperature was 0, so a second run is close to a repeat: read this as 24 tickets seen twice. "No rules in its prompt" means none of the rule book; the desk's short job description stays. These runs use the checks from the day of the test; the desk has gained one since (see Limits). Verdicts that depended on wording also got a blind re-read by a fresh Claude agent.
 
@@ -101,7 +101,7 @@ A dangerous draft is one a person could approve that is wrong or promises what n
 
 The LoRA trades some accuracy for speed: 41 right against 45, and 1 dangerous draft against none. In exchange, a colleague waits about 29 seconds for a draft instead of about three minutes, the same GPU works about five times the tickets an hour (about 4.4 times counting only the right ones), and each ticket takes about a sixth of the time and generates about a sixth of the tokens. Across all tokens, in and out, it is about a third.
 
-Those are two setups we measured as whole paths, but one comparison isolates the adapter. Out of the box and the LoRA read the same short prompt, and the adapter alone took it from 167 seconds and 3,232 generated tokens to 29 and 534. So the shorter prompt alone is not the speed. The training rows carry no reasoning, so the likely cause, our inference, is that the model learned to stop deliberating. We have not tested the base model with reasoning turned off, or with a shortened or retrieved rule book.
+Those are two setups we measured as whole paths, but one comparison isolates the adapter. Out of the box and the LoRA read the same short prompt, and the adapter alone took it from 167 seconds and 3,232 generated tokens to 29 and 534. So the shorter prompt alone is not the speed. The training rows carry no reasoning, so the likely cause, our inference, is that the model learned to stop deliberating. We have not tested the base model with reasoning turned off, or with a shortened or retrieved rule book. Reasoning off could not supply the rules, though: on the same short prompt, out of the box took 4.94% off a pushback and quoted a date nobody gave in 6 of 6 runs, and with the LoRA it took 0.91% off and asked in 5 of 6. That behavior is in the weights.
 
 - **Faster on every ticket, not on average only.** The LoRA beat the written rules in all 48 paired runs. On the 40 where both were right, it took 27 seconds against 168, so it isn't faster because it fails sooner.
 - **It asks instead of guessing, where it counts.** On three tickets with no ship date, twice each, the model out of the box quoted a date nobody gave in 6 of 6 runs. With the LoRA it asked in 5 of 6. With the rules gone from its prompt, it also kept asking the owner on requests beyond its authority, including a customer claiming the owner had agreed: 6 of 6, the same as the other two.
@@ -181,7 +181,7 @@ site/         the public page and the evidence page
 scripts/      GPU setup, serving, training, the test runs, check_numbers
 baselines/    frozen sheets, their hashes, written rules, results
 experiments/  scripts from earlier experiments, kept as they ran
-tests/        230 tests, no GPU needed: uv run --with pytest pytest
+tests/        238 tests, no GPU needed: uv run --with pytest pytest
 ```
 
 Words you may meet in the code: an **arm** is one column of a test. **test24b** is the main test's sheet, and **test24** is the earlier one. A **card** is a rule, numbered R1 to R10. `c60-s1` means worker C, 60 records, seed 1. **h1** is the first dataset. `desk2`, `tasks2` and `score2` are the second versions, and the first ones remain because the first experiments and their tests use them. `testbed/sheet24.py` writes both sheets.
@@ -191,7 +191,7 @@ Words you may meet in the code: an **arm** is one column of a test. **test24b** 
 - **The desk is a sample.** Tickets are generated. The records the rules came from were written by a scripted worker, one person answered the open points, and there are no real customers yet.
 - **The adapter is not as accurate as the written rules:** 21 and 20 right against 23 and 22, with 0 and 1 dangerous drafts against 0 and 0. On tickets with no ship date it asked in 5 of 6 runs and made a date up in the other. A person sees that draft before anything goes out.
 - **It does not always notice a problem.** Given written rules that conflict, it went ahead without asking in 3 of 3 runs and took 1.71% off, which neither rule says; the grader marks all three dangerous ([the runs](baselines/results/test24-lora/)). On a ticket whose date crosses into a new year, it wrote the wrong year in both runs. A check held the draft back for another reason, and no check reads the year.
-- **The desk changed after the main test, on purpose.** It gained a check that holds back a reply naming the shop's inner limits, and one reminder when a model ends in plain words. It also now reads an amount written with the sign after it, like 6.05$, after a person's draft slipped through that way; no recorded model draft wrote one. The frozen tests run without them so they stay as they ran. That check would have sent back 5, 8 and 6 of the drafts counted as right, in the three columns.
+- **The desk changed after the main test, on purpose.** It gained a check that holds back a reply naming the shop's inner limits, and one reminder when a model ends in plain words. It also now reads an amount written with the sign after it, like 6.05$, after a person's draft slipped through that way; no recorded model draft wrote one. The frozen tests run without them so they stay as they ran. That check would have sent back 5, 8 and 6 of the drafts counted as right, in the three columns. For the LoRA those 6 are all its discount drafts, the 0.91% one included: it writes "within my authority" out of habit. On today's desk a pushback ticket took 57 to 59 seconds, against about 31 in the test.
 - **Practice rows were filtered by the generator's answers for those practice tickets,** which removed 17 of 172 rows. The test's tickets are separate. A desk at a real business has no such answers; a person's approvals would have to do that job, which isn't built. We also chose the practice mix ourselves, the same people who wrote the test, and its kinds line up with the test's ([the mix](baselines/results/test24b/practice-summary.json)).
 - **The new sheet comes from the same generator with a new seed,** and no person checked it ticket by ticket. The person who answered the open points also shaped the first answer sheet.
 - **The learning round inside the product has run for real once, and its adapter stayed off.** From 60 records it built 154 rows (60 distinct, rebalanced) and trained for 44 minutes. On its four fixed check tickets the adapter got 3 right and 1 dangerous, so the round refused to turn it on. A round that ends with its adapter turned on has not happened yet.
@@ -204,7 +204,7 @@ First, a real shop's desk: does a person who does this job accept the rules and 
 
 Then one computer in the office, one workalike for every person: one GPU, an adapter for each employee, and the company's data in the building. We have [served nine adapters from one server on one GPU](baselines/results/serving/nine-adapters.log), 12 tickets each. They were early adapters from one scripted worker, so this shows serving, not quality. As computer-use models improve, the same learning can reach the other apps people work in.
 
-The code and the sample adapter stay free. We plan to charge small shops for what they can't do themselves: turning one job into checked rules and a trained adapter, on their own machine or on one we host, and keeping it current as the rules change. Our first test is a fixed-price pilot with one real shop.
+The code and the sample adapter stay free. We plan to charge small shops for what they can't do themselves: turning one job into checked rules and a trained adapter, on their own machine or on one we host, and keeping it current as the rules change. Our first test is a fixed-price pilot with one real shop. One rented L40S left on costs about $2,650 a month, so $0.008 a ticket holds only at full load, which one small desk will not reach. The pilot has to answer that with a box shared across desks or one we host.
 
 ## License
 

@@ -17,9 +17,9 @@
                    ask: "ask for the date", earliest: "quote your earliest date" };
   /* Recorded on our GPU, on these same two requests; build.py adds the runs to recorded.json as data.lora. */
   const LORA = {
-    price: { big: l => `${l.off}% off`, text: l => `This same request, with no rules in its prompt. ${l.runs} runs at temperature 0, all alike. In our main test, on a ticket like this one, it took 0.91% and 0.65%.` },
+    price: { big: l => `${l.off}% off`, text: l => `This same request, with no rules in its prompt. ${l.runs} runs at temperature 0, all alike. In our main test, on a ticket like this one, it took 0.91% and 0.65%. This request took longer because the desk sent its first draft back once.` },
     date: { big: l => "Asked for the date", text: l => `This same request, with no rules in its prompt. It asked in ${l.same} of ${l.runs} runs at temperature 0. In our main test, on tickets like this one, it asked in 5 of 6 and quoted a date nobody gave once.` } };
-  const WHY_TRAIN = "On one GPU, a model reading the full rule book took about 181 seconds a ticket. The LoRA took about 29.";
+  const WHY_TRAIN = "It averaged 29 seconds a ticket across the main test, against 181 for the same GPU reading the full rule book. The hosted columns are a different model on Baseten's servers, so their seconds don't compare with this one. If your records can go there, that works. The LoRA is for when they can't leave your building.";
   let data = null, picks = { price: null, date: null }, busy = false;
 
   function h(tag, attrs, ...kids) {
@@ -137,7 +137,7 @@
     sw.classList.add("on");
     sw.disabled = true;
     const without = column("No manual", "Muse Spark Open"), mine = column("Your manual", "Muse Spark Open, same request");
-    const lora = h("section", { class: "arm lora drawn" }, h("h3", {}, "Trained, no manual"), h("p", { class: "sub" }, "Muse Glimmer with the LoRA, recorded on our GPU"),
+    const lora = h("section", { class: "arm lora drawn" }, h("h3", {}, "Trained, no manual"), h("p", { class: "sub" }, `Muse Glimmer with the LoRA, recorded on our GPU, ${data.lora[ticket].seconds} seconds`),
                    h("p", { class: "big" }, LORA[ticket].big(data.lora[ticket])), h("p", {}, LORA[ticket].text(data.lora[ticket]), " ", WHY_TRAIN),
                    h("blockquote", { class: "draft" }, data.lora[ticket].message),
                    h("p", { class: "aside" }, "That LoRA learned one person's way: the smallest discount. ", h("a", { href: "#numbers" }, "See all 24 tickets.")));

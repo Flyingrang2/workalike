@@ -32,7 +32,7 @@ done
 curl -sf localhost:8000/v1/models | grep -q p-checked || { echo "the adapter did not load; see $OUT/server.log"; exit 1; }
 
 # The sample desk, made from the generator. The person's rule book is the one the LoRA practised from; when you change a
-# rule the LoRA rests and the agent reads the written rules until it has learned the change.
+# rule the LoRA rests and the agent reads the written rules until a new adapter is trained.
 [ -f data/loop/cases.jsonl ] || "$PY" -m testbed.loop_cases --out data/loop/cases.jsonl
 [ -f data/human/htrain.jsonl ] || "$PY" -m testbed.human_sheet --out data/human
 mkdir -p "$OUT/adapter"
