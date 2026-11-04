@@ -10,6 +10,7 @@ active one stays. Every step goes to <versions>/status.json, which the agent pan
 read: the agent's own drafts are kept in another file and are never learned from as if a person had done them.
 Each version keeps which records it came from, how many rows were repeats, its training time and its check.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,8 +22,8 @@ from pathlib import Path
 
 from .envs import V2
 from .learn import build, episodes
-from .record import wall_clock
 from .rebalance import rebalance
+from .record import wall_clock
 from .sft import read_jsonl, write_jsonl
 
 
@@ -81,21 +82,45 @@ def learn_once(records, versions, shell, check, target: int = 150) -> dict:
     manifest["activated"] = won
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
     if won:
-        status.data["active"] = {"version": manifest["version"], "name": manifest["name"], "path": str(out / "adapter"),
-                                 "check": tally, "tickets": balance["unique_rows"], "rows": len(rows),
-                                 "train_seconds": manifest["train_seconds"]}
+        status.data["active"] = {
+            "version": manifest["version"],
+            "name": manifest["name"],
+            "path": str(out / "adapter"),
+            "check": tally,
+            "tickets": balance["unique_rows"],
+            "rows": len(rows),
+            "train_seconds": manifest["train_seconds"],
+        }
     status.data["learned_from"] = finished(records)
-    status.step(f"{manifest['version']} 켰습니다" if won else f"{manifest['version']}는 켜지 않았습니다(전보다 나쁨)", check=tally)
+    status.step(
+        f"{manifest['version']} 켰습니다" if won else f"{manifest['version']}는 켜지 않았습니다(전보다 나쁨)",
+        check=tally,
+    )
     return manifest
 
 
 def gpu_shell(base: str, python: str, server_stop):
     """The real steps on the box: the server gives the card back, then the tokens and the adapter are made."""
+
     def run(step, paths):
         server_stop()
         subprocess.run([python, "scripts/render_sft.py", "--tokenizer", base, "--data", paths["data"]], check=True)
-        subprocess.run([python, "scripts/train_lora.py", "--base", base, "--data", paths["tok"], "--seed", "1",
-                        "--out", paths["adapter"]], check=True)
+        subprocess.run(
+            [
+                python,
+                "scripts/train_lora.py",
+                "--base",
+                base,
+                "--data",
+                paths["tok"],
+                "--seed",
+                "1",
+                "--out",
+                paths["adapter"],
+            ],
+            check=True,
+        )
+
     return run
 
 
@@ -113,12 +138,14 @@ def main() -> None:
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     args = ap.parse_args()
     from .serving import Server, fixed_check  # the GPU side: imported only here
+
     server = Server(args.base)
     shell = gpu_shell(args.base, args.train_python, server.stop)
     check = fixed_check(server, args.check_tasks, args.check_answers, args.base_url)
 
     def round_once():
         return learn_once(args.records, args.versions, shell, check, args.target)
+
     if args.mode == "once":
         print(json.dumps(round_once()["check"]))
         return

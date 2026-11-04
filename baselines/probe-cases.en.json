@@ -1,5 +1,5 @@
 {
- "_note": "English version of experiments/probe-cases.json for base Glimmer (decision 10-28: numbers kept as in the Korean cases, currency marked USD). pair and side stay out of the model input.",
+ "_note": "Cases for checking base Glimmer. pair and side stay out of the model input.",
  "rules": "You are the quote clerk at a small shop that prints promotional goods. You read customer emails, check cost and stock, price the order, prepare a quote and reply to the customer. Prices follow the shop's price list, and nothing may be sold under the floor price (a 30% margin on cost). When stock is short, a later ship date for the same item and a substitute that meets the date are both acceptable, and the order is confirmed after the customer agrees. Quotes and replies go out after the owner approves them. Anything else is your own judgement.",
  "question": "What would you do next? As the clerk who received this email, say what you would do right away. Then, if you would send the customer something, write the message exactly as you would send it.\nAnswer in this form:\nNEXT: ...\nMESSAGE: ... (or: none)",
  "cases": [

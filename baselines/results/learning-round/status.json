@@ -1,0 +1,40 @@
+{
+ "steps": [
+  {
+   "t": "2026-11-03T07:20:15",
+   "what": "데이터 만드는 중",
+   "records": 60
+  },
+  {
+   "t": "2026-11-03T07:20:15",
+   "what": "학습 중",
+   "version": "v1",
+   "tickets": 60,
+   "rows": 154
+  },
+  {
+   "t": "2026-11-03T08:03:48",
+   "what": "시험 중",
+   "version": "v1",
+   "train_seconds": 2613
+  },
+  {
+   "t": "2026-11-03T08:06:33",
+   "what": "v1는 켜지 않았습니다(전보다 나쁨)",
+   "check": {
+    "ready": 1,
+    "right_hold": 2,
+    "needless_hold": 0,
+    "dangerous": 1,
+    "failed": 0,
+    "good": 3,
+    "look": 2,
+    "tickets": 4
+   }
+  }
+ ],
+ "active": null,
+ "state": "v1는 켜지 않았습니다(전보다 나쁨)",
+ "updated": "2026-11-03T08:06:33",
+ "learned_from": 60
+}

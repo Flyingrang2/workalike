@@ -1,0 +1,893 @@
+{
+ "records": "data/v2/records/c-train.jsonl",
+ "records_sha": "9da5716ecc87514e",
+ "episodes": 60,
+ "shuffle": "11:curve:1",
+ "batch": 8,
+ "writer": "muse-glimmer",
+ "json_schema": false,
+ "seconds": 403.4,
+ "completion_tokens": 8411,
+ "cards": [
+  {
+   "situation": "Requested SKU/quantity not fully in stock and/or restock is after the requested ship date, customer does not insist on exact item/date",
+   "action": "Inform the customer of on-hand quantity and restock date; propose options such as shipping available quantity now and remainder after restock, waiting for full restock, or substituting with an in-stock item. Do not quote the original SKU for the requested ship date if restock is after that date. May create a mixed original+substitute quote and an all-substitute alternative. If a substitute is offered because of a stockout, offer an apology discount within worker discount authority and seek owner approval when the worker has no authority.",
+   "unknowns": [
+    "Whether a substitute is always offered when one exists",
+    "What discount level is used for an apology discount on a substitute",
+    "What is done if there is no restock date or no substitute"
+   ],
+   "evidence": [
+    1,
+    4,
+    11,
+    22,
+    23,
+    24,
+    26,
+    28,
+    36,
+    38,
+    45,
+    46,
+    52,
+    56
+   ],
+   "from": [
+    1,
+    7,
+    13,
+    15,
+    17,
+    22,
+    27,
+    32
+   ],
+   "records": [
+    "e-7754743fa5",
+    "e-908dd0eae9",
+    "e-d2a175cd5c",
+    "e-ac089123b3",
+    "e-64d265055f",
+    "e-31e125ede7",
+    "e-ac81637ace",
+    "e-6c8ead51b2",
+    "e-98dfeea2ca",
+    "e-126c19fe10",
+    "e-0ccdd89bae",
+    "e-d071b8c818",
+    "e-5b566f9ea2",
+    "e-848df6729d"
+   ]
+  },
+  {
+   "situation": "Requested SKU/quantity cannot be fulfilled by the requested ship date and the customer explicitly insists the item must be exact and the date must be met with no substitutes",
+   "action": "Inform the customer of the shortage and inability to meet the date, apologize, and close without offering a substitute, partial shipment, wait option or a quote.",
+   "unknowns": [
+    "Whether the worker would ever offer partial shipment or wait if the customer insists",
+    "Whether the rule applies only when restock date is after the requested date",
+    "What the worker does if the customer later relents"
+   ],
+   "evidence": [
+    47,
+    48
+   ],
+   "from": [
+    26
+   ],
+   "records": [
+    "e-0ca44b3602",
+    "e-e4567ddd5f"
+   ]
+  },
+  {
+   "situation": "Customer provides an SKU that is not found in the catalog",
+   "action": "Check stock for the unknown SKU, receive an unknown_sku error with similar suggestions, check stock for the suggested similar SKU(s), and ask the customer to confirm the intended SKU before proceeding with pricing or quoting.",
+   "unknowns": [
+    "How many clarification attempts are made before closing",
+    "What happens if the customer confirms an SKU that is still not in catalog",
+    "Which similar SKU is picked when multiple are suggested"
+   ],
+   "evidence": [
+    6,
+    7,
+    9,
+    12,
+    37,
+    39,
+    41,
+    43,
+    58,
+    59
+   ],
+   "from": [
+    4,
+    6,
+    21,
+    25,
+    35
+   ],
+   "records": [
+    "e-f03c3b8244",
+    "e-50454317cf",
+    "e-ba86e373f2",
+    "e-04fd198dfd",
+    "e-4f7a9034b5",
+    "e-ef57420161",
+    "e-62fcd18d45",
+    "e-2d51c930c3",
+    "e-4415a30b0a",
+    "e-a984f60e2b"
+   ]
+  },
+  {
+   "situation": "Customer request does not include an explicit ship-by date",
+   "action": "Ask the customer for an acceptable ship date before checking costs, calculating price or creating a quote; may tell the customer the earliest date the shop could ship.",
+   "unknowns": [
+    "Whether the ask is required for all requests or only for multi-line requests",
+    "What the worker does if the customer never provides a date",
+    "Is phrasing about earliest possible ship date standard"
+   ],
+   "evidence": [
+    5,
+    21,
+    33,
+    35
+   ],
+   "from": [
+    3,
+    12,
+    20
+   ],
+   "records": [
+    "e-d469cf5dbe",
+    "e-77eaabc1e9",
+    "e-003faf5a41",
+    "e-82ae38dc5a"
+   ]
+  },
+  {
+   "situation": "Customer provides a latest acceptable ship date for a new or reorder order",
+   "action": "Set the quote ship_by date on or before the requested latest date, never later. Typically set 1-2 days earlier than the customer's stated latest, often 1 day earlier for new quotes and 2 days earlier for repeat quotes that reuse an approved price, and often move off weekends.",
+   "unknowns": [
+    "Why some records use the exact requested ship date with zero buffer",
+    "What determines the exact buffer size",
+    "Whether the buffer is calendar days or business days"
+   ],
+   "evidence": [
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    26,
+    27,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+   ],
+   "from": [
+    5,
+    11,
+    18,
+    24
+   ],
+   "records": [
+    "e-1dc47a7b50",
+    "e-908dd0eae9",
+    "e-d469cf5dbe",
+    "e-f03c3b8244",
+    "e-50454317cf",
+    "e-66e88f328c",
+    "e-ba86e373f2",
+    "e-d1a2afdc20",
+    "e-79a9f89573",
+    "e-87155d46c6",
+    "e-be0fcfe71b",
+    "e-87a906ab1b",
+    "e-ac81637ace",
+    "e-3290ff88d7",
+    "e-3adaeb0d0f",
+    "e-66dd5c7d06",
+    "e-d2304e8f9b",
+    "e-2d7c20375a",
+    "e-003faf5a41",
+    "e-45d9888949",
+    "e-82ae38dc5a",
+    "e-98dfeea2ca",
+    "e-4f7a9034b5",
+    "e-126c19fe10",
+    "e-ef57420161",
+    "e-065079b292"
+   ]
+  },
+  {
+   "situation": "Customer asks to reorder the same quantities as a previous approved quote that is still within its valid_until date",
+   "action": "Look up the previous quote, verify it is approved and valid_until is on or after today, and reuse the previous unit price instead of recalculating price from current cost. Note that the price is from the approved quote.",
+   "unknowns": [
+    "Whether the rule applies if the quote expires on the same day as the request",
+    "Whether stock is still checked before reusing the price",
+    "Whether a cost change or change in discount authority would override reuse"
+   ],
+   "evidence": [
+    2,
+    13,
+    14,
+    27,
+    29,
+    32
+   ],
+   "from": [
+    2,
+    8,
+    16
+   ],
+   "records": [
+    "e-1dc47a7b50",
+    "e-79a9f89573",
+    "e-87155d46c6",
+    "e-3290ff88d7",
+    "e-3adaeb0d0f",
+    "e-2d7c20375a"
+   ]
+  },
+  {
+   "situation": "Customer requests a reorder referencing a previous quote that is expired",
+   "action": "Look up the previous quote, note its expiration, check current stock and cost, create a new quote at today's list/current prices and explicitly inform the customer the previous quote has expired so the new quote is at today's prices. May offer a reorder discount up to worker authority after a price complaint.",
+   "unknowns": [
+    "Whether the worker always explicitly notes expiration on every re-quote",
+    "Whether a discount is offered proactively or only after a complaint",
+    "Whether the worker always recalculates from current cost or sometimes attempts to honor the old price"
+   ],
+   "evidence": [
+    16,
+    19,
+    34,
+    42,
+    49,
+    50,
+    54,
+    57
+   ],
+   "from": [
+    9,
+    14,
+    23,
+    29,
+    31,
+    34
+   ],
+   "records": [
+    "e-87a906ab1b",
+    "e-e428cac7ca",
+    "e-45d9888949",
+    "e-fd05dd240a",
+    "e-e0fe470b1c",
+    "e-0103d15e63",
+    "e-ce48ea9ac8",
+    "e-b06f95d38c"
+   ]
+  },
+  {
+   "situation": "Customer questions a price increase on a re-quote or explicitly requests a lower price/discount",
+   "action": "If the discount is within the worker's stated discount authority and at or above the floor price, apply it directly and note the discount % as within authority. If the discount exceeds authority or would go below floor price, ask the owner for permission before offering a reduced price and only proceed if the owner agrees to stay at or above floor. Never quote below floor price. Discounts may be framed as a reorder discount.",
+   "unknowns": [
+    "Whether the worker always asks the owner for any discount beyond authority or only when floor would be breached",
+    "What discount amount or conditions the owner considers acceptable beyond staying above floor",
+    "Whether a discount is offered proactively without an explicit price request"
+   ],
+   "evidence": [
+    16,
+    28,
+    32,
+    41,
+    42,
+    43,
+    44,
+    46,
+    49,
+    50,
+    54,
+    57
+   ],
+   "from": [
+    10,
+    19,
+    28,
+    30,
+    33,
+    36
+   ],
+   "records": [
+    "e-87a906ab1b",
+    "e-6c8ead51b2",
+    "e-2d7c20375a",
+    "e-62fcd18d45",
+    "e-fd05dd240a",
+    "e-2d51c930c3",
+    "e-76f889e20d",
+    "e-d071b8c818",
+    "e-e0fe470b1c",
+    "e-0103d15e63",
+    "e-ce48ea9ac8",
+    "e-b06f95d38c"
+   ]
+  },
+  {
+   "situation": "Before quoting any line item",
+   "action": "Always verify stock sufficiency for the requested qty/sku with check_stock before get_cost/calc_price/create_quote.",
+   "unknowns": [
+    "What the worker does if stock is insufficient",
+    "Whether stock is re-checked after a discount or SKU clarification",
+    "Whether a stock check is skipped for a re-quote of a previously checked item"
+   ],
+   "evidence": [
+    57,
+    58,
+    59,
+    60
+   ],
+   "from": [
+    38
+   ],
+   "records": [
+    "e-b06f95d38c",
+    "e-4415a30b0a",
+    "e-a984f60e2b",
+    "e-a7b35b9ad8"
+   ]
+  },
+  {
+   "situation": "Customer follows up on a request that was previously acknowledged but not yet quoted",
+   "action": "Apologize for the wait referencing the prior acknowledgement date in the reply, then provide the quote.",
+   "unknowns": [
+    "Whether an apology is given if there was no prior acknowledgement",
+    "How apology wording changes with length of delay",
+    "Whether the worker would apologize for a first-time request with no prior note"
+   ],
+   "evidence": [
+    60
+   ],
+   "from": [
+    37
+   ],
+   "records": [
+    "e-a7b35b9ad8"
+   ]
+  }
+ ],
+ "batches": [
+  [
+   {
+    "situation": "Customer requests a SKU that is out of stock or insufficient on hand",
+    "action": "Inform the customer of on-hand quantity and restock date, propose shipping the available quantity now and the remainder after restock, and offer an in-stock substitute SKU if one is listed",
+    "evidence": [
+     1,
+     4
+    ],
+    "unknowns": [
+     "Whether a substitute is always offered when one exists",
+     "Whether a discount is always offered on the substitute when the worker has discount authority, and at what level",
+     "What is done if there is no restock date or no substitute"
+    ]
+   },
+   {
+    "situation": "Customer asks to reorder the same quantities as a previous approved quote",
+    "action": "Lookup the previous quote and create a new quote reusing the previous quote’s unit_price instead of recalculating price from current cost",
+    "evidence": [
+     2
+    ],
+    "unknowns": [
+     "Whether the rule applies if the previous quote is expired or past valid_until",
+     "Whether a cost increase/decrease or a change in discount authority would override reuse",
+     "Whether stock is still checked before reusing the price"
+    ]
+   },
+   {
+    "situation": "Customer’s request does not include an explicit ship-by date",
+    "action": "Ask the customer for an acceptable ship date before getting cost, calculating price and creating a quote",
+    "evidence": [
+     5
+    ],
+    "unknowns": [
+     "Whether the ask is required for all requests or only for multi-line requests",
+     "What the worker does if the customer never provides a date"
+    ]
+   },
+   {
+    "situation": "Customer provides an SKU that is not in the catalog",
+    "action": "Ask for clarification and suggest the likely correct SKU, then proceed with quoting only after customer confirms the correct SKU",
+    "evidence": [
+     6,
+     7
+    ],
+    "unknowns": [
+     "How many clarification attempts are made before closing",
+     "What happens if the customer confirms an SKU that is still not in catalog"
+    ]
+   },
+   {
+    "situation": "Quoting an in-stock item with a customer-provided latest ship date",
+    "action": "Set the quote ship_by to one day earlier than the customer’s requested latest ship date",
+    "evidence": [
+     2,
+     4,
+     5,
+     6,
+     7,
+     8
+    ],
+    "unknowns": [
+     "Why Record 3 used the same day as requested instead of a one-day buffer",
+     "Whether the buffer depends on day of week, quantity, SKU type or stock level"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer provides a SKU that is not found in the catalog",
+    "action": "Check stock for the unknown SKU, retrieve similar SKUs from the error response and ask the customer to confirm the intended SKU before proceeding with pricing",
+    "evidence": [
+     9,
+     12
+    ],
+    "unknowns": [
+     "Whether the worker always checks similar SKUs or only when a close match is returned",
+     "Whether the worker would proceed without explicit customer confirmation if the customer does not reply"
+    ]
+   },
+   {
+    "situation": "Requested quantity exceeds on-hand stock and the restock date is after the customer's required ship date",
+    "action": "Fulfill as much as possible with the on-hand requested item and make up the shortfall with an in-stock substitute, create a mixed quote for that combination and also create an all-substitute alternative quote",
+    "evidence": [
+     11
+    ],
+    "unknowns": [
+     "Whether substitution is offered only when the customer explicitly says style does not matter",
+     "Whether the worker always creates both a mixed and an all-substitute quote"
+    ]
+   },
+   {
+    "situation": "Customer requests a reorder by referencing a previous quote ID",
+    "action": "Look up the previous quote and, if it is approved and its valid_until date is on or after today, reuse the previous unit price in the new quote and note that the price is from the approved quote",
+    "evidence": [
+     13,
+     14
+    ],
+    "unknowns": [
+     "What the worker does if the previous quote is approved but valid_until is in the past",
+     "How the worker handles a previous quote that is not approved or contains multiple lines with different statuses"
+    ]
+   },
+   {
+    "situation": "Customer requests a reorder and the referenced quote is expired",
+    "action": "Quote at current cost using today's unit cost and explicitly inform the customer that the previous quote has expired so the new quote is at today's prices",
+    "evidence": [
+     16
+    ],
+    "unknowns": [
+     "Whether the worker always informs the customer about expiration",
+     "Whether the worker always recalculates from current cost or sometimes attempts to honor the old price"
+    ]
+   },
+   {
+    "situation": "Customer pushes back on a price increase after an expired reorder quote",
+    "action": "Ask the owner for permission to discount, with the constraint to stay at or above the floor price, and if approved issue a revised quote with the discounted price",
+    "evidence": [
+     16
+    ],
+    "unknowns": [
+     "Whether the worker would ask the owner if they had sufficient discount authority to cover the requested discount",
+     "What discount amount or conditions the owner considers acceptable beyond staying above floor"
+    ]
+   },
+   {
+    "situation": "Customer provides a latest acceptable ship date for a new or reorder order",
+    "action": "Set the quote ship_by date on or before the requested latest date, typically 1-2 days earlier than the customer's stated latest",
+    "evidence": [
+     9,
+     10,
+     13,
+     14,
+     15,
+     16
+    ],
+    "unknowns": [
+     "Why records 11 and 12 use the exact requested ship date with zero buffer",
+     "What determines the exact buffer size and whether it depends on product, lead time, or business days"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer request is missing a ship date",
+    "action": "Ask for a ship date before checking costs or creating a quote",
+    "evidence": [
+     21
+    ],
+    "unknowns": [
+     "Does the worker always ask for a ship date first, or only when multiple SKUs are requested?",
+     "Is the phrasing about earliest possible ship date standard?",
+     "Would a vague date range trigger the same ask?"
+    ]
+   },
+   {
+    "situation": "Requested SKU is out of stock for the needed quantity and the restock date is after the requested ship date",
+    "action": "Do not quote the original SKU for the requested ship date; propose alternative fulfillment such as a split shipment, waiting for restock, or an in-stock substitute",
+    "evidence": [
+     22,
+     23,
+     24
+    ],
+    "unknowns": [
+     "Does the worker always check for substitutes when stock is short?",
+     "What is done if no substitute exists?",
+     "If restock is before the requested ship date, would the worker wait instead of substituting?"
+    ]
+   },
+   {
+    "situation": "Customer requests a repeat of an expired quote and complains the new price is higher",
+    "action": "Quote at today’s list prices noting the expiration, then offer a discount up to the worker’s discount authority for the reorder",
+    "evidence": [
+     19
+    ],
+    "unknowns": [
+     "Is the discount offered proactively on all reorders or only after a complaint?",
+     "Is the discount always the maximum allowed under authority?",
+     "Does the rule apply to price complaints that are not reorders?"
+    ]
+   },
+   {
+    "situation": "Stock shortage is identified for a requested SKU",
+    "action": "Offer an in-stock substitute with an apology discount, and seek owner approval for the discount when the worker has no discount authority",
+    "evidence": [
+     23,
+     24
+    ],
+    "unknowns": [
+     "Is the apology discount always 3% or does it vary?",
+     "Is a discount offered whenever a substitute is proposed, or only in some cases?",
+     "If the customer chooses a split shipment instead of a substitute, is any apology discount still offered?"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer asks to quote the same order as a previous quote",
+    "action": "Worker looks up the previous quote and reuses the exact unit price from it when the previous quote is approved and still within its valid_until date; when the previous quote is expired the worker recalculates price at current cost and notes the expiration to the customer",
+    "evidence": [
+     27,
+     29,
+     32
+    ],
+    "unknowns": [
+     "Whether a quote that is approved but expires on the same day as the request is treated as valid or expired",
+     "How the worker handles a repeat request when the original quote status is not approved",
+     "Whether partial changes to qty or items would still trigger price reuse"
+    ]
+   },
+   {
+    "situation": "Requested quantity is not fully in stock and the restock date is after the customer’s requested ship date",
+    "action": "Worker offers alternative fulfillment options such as partial shipment now with remainder after restock, waiting for full restock, or substituting with an in-stock alternative, and may create multiple draft quotes to present the options",
+    "evidence": [
+     26,
+     28
+    ],
+    "unknowns": [
+     "Whether a substitute is always offered when one is listed, or only when the customer indicates alternatives are acceptable",
+     "How the worker chooses which substitute to propose when multiple are available",
+     "What the worker does when no substitute is listed"
+    ]
+   },
+   {
+    "situation": "Customer provides a latest acceptable ship date",
+    "action": "Worker sets the quote ship_by date earlier than the customer’s requested latest date, never later, with a buffer that is typically one day earlier for new quotes and two days earlier for repeat quotes that reuse an approved price",
+    "evidence": [
+     26,
+     27,
+     29,
+     30,
+     31,
+     32
+    ],
+    "unknowns": [
+     "Why the buffer differs between new and repeat quotes",
+     "Whether the buffer is calendar days or business days",
+     "Under what conditions the worker sets ship_by equal to the requested date as in Record 25"
+    ]
+   },
+   {
+    "situation": "Customer questions a price increase on a re-quote or explicitly requests a discount",
+    "action": "Worker asks the owner for permission to discount, describes the context, and respects the owner’s instruction to keep list price or stay at/above floor price; the worker then communicates the best price allowed",
+    "evidence": [
+     28,
+     32
+    ],
+    "unknowns": [
+     "Whether the worker always asks the owner for any discount request or only when the requested discount would exceed personal authority or go below floor",
+     "What the worker considers an acceptable ‘a little off’ amount",
+     "How the worker handles a discount request that is within personal authority but the customer still pushes"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer does not provide a ship date in the initial request",
+    "action": "Worker asks for a ship date and tells the customer the earliest date the shop could ship",
+    "evidence": [
+     33,
+     35
+    ],
+    "unknowns": [
+     "Whether the worker always asks for a ship date when stock is insufficient or when a clarification is needed first",
+     "Whether the ‘earliest we could ship’ is always today+1 or depends on product/lead time",
+     "What the worker does if the customer’s desired deadline is earlier than the earliest ship date"
+    ]
+   },
+   {
+    "situation": "Requested SKU is unknown / appears to be a typo",
+    "action": "Worker checks stock for the unknown SKU, finds similar SKUs, and asks the customer to confirm the intended SKU before proceeding",
+    "evidence": [
+     37,
+     39
+    ],
+    "unknowns": [
+     "Whether the worker always checks similar SKUs or sometimes assumes a match",
+     "How the worker behaves when there are multiple similar SKUs or no similar SKUs",
+     "Whether clarification is always requested before any cost/price work"
+    ]
+   },
+   {
+    "situation": "Requested quantity is not in stock and the stock check returns substitutes",
+    "action": "Worker proposes substitute(s) from the stock check; if a substitute is offered because of a stockout the worker will discount the substitute within their discount authority and presents the option to the customer",
+    "evidence": [
+     36,
+     38
+    ],
+    "unknowns": [
+     "Whether a discount is always applied to a stockout substitute or only when the customer accepts the substitute",
+     "What exact discount amount is used within authority – e.g., always max authority or a fixed %",
+     "Whether partial fulfillment / restock timing is always offered in addition to a substitute"
+    ]
+   },
+   {
+    "situation": "Customer requests a re-quote of a previous quote that is expired and then pushes back on the new price",
+    "action": "Worker informs the customer the prior quote is expired so pricing is at today’s prices, and if a discount beyond the worker’s authority is needed the worker asks the owner for approval",
+    "evidence": [
+     34
+    ],
+    "unknowns": [
+     "Whether the worker always explicitly notes expiration and price change on every re-quote",
+     "Whether the worker always asks the owner for any discount beyond authority or only when the customer explicitly pushes back",
+     "What the worker does if the owner approves a partial discount"
+    ]
+   },
+   {
+    "situation": "Customer provides a latest ship-by deadline",
+    "action": "Worker creates the quote with a ship_by date on or before the requested deadline, typically 1-2 calendar days earlier and often moved off weekends",
+    "evidence": [
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40
+    ],
+    "unknowns": [
+     "The exact buffer rule – sometimes same day, sometimes 1 day, sometimes 2 days",
+     "Whether the buffer depends on product lead time, shipping method, quantity, or customer",
+     "Why some deadlines that fall on a weekend are kept on the weekend while others are moved to the prior business day"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer provides a SKU that is not found in the catalog.",
+    "action": "Check stock for the given SKU, receive an unknown_sku error with similar suggestions, check stock for the suggested similar SKU, then send a reply asking the customer to confirm the similar SKU before proceeding with pricing.",
+    "evidence": [
+     41,
+     43
+    ],
+    "unknowns": [
+     "Whether the worker always checks the suggested similar SKU before asking for confirmation.",
+     "What the worker does if no similar SKU is suggested.",
+     "Whether the worker ever proceeds without explicit customer confirmation."
+    ]
+   },
+   {
+    "situation": "Requested SKU/quantity cannot be fulfilled by the requested ship date and the customer explicitly insists the item must be exact and the date must be met with no substitutes.",
+    "action": "Inform the customer of the shortage and inability to meet the date, apologize, and close without offering a substitute, partial shipment, wait option or a quote.",
+    "evidence": [
+     47,
+     48
+    ],
+    "unknowns": [
+     "Whether the worker would ever offer a partial shipment or wait option if the customer insists.",
+     "Whether the rule applies only when the restock date is after the requested date.",
+     "What the worker does if the customer later relents."
+    ]
+   },
+   {
+    "situation": "Requested SKU/quantity cannot be fulfilled by the requested ship date and the customer does not insist on exact item/date.",
+    "action": "Offer options: ship partial now and remainder after restock, wait for full restock, or substitute with an in-stock item at a discount as an apology for the shortage; if the customer chooses a substitute, quote the substitute with the discount.",
+    "evidence": [
+     45,
+     46
+    ],
+    "unknowns": [
+     "Whether the apology discount is always 3% or varies by situation.",
+     "Whether a substitute is always offered when substitutes exist.",
+     "Whether the worker always asks the owner for approval when discount authority is none."
+    ]
+   },
+   {
+    "situation": "Worker needs to offer a price below list price.",
+    "action": "If the discount is within the worker's stated discount authority and at or above the floor price, apply it directly; if the discount exceeds authority or authority is none, ask the owner for approval before offering a price under list; never quote below the floor price.",
+    "evidence": [
+     41,
+     42,
+     43,
+     44,
+     46
+    ],
+    "unknowns": [
+     "Whether the worker ever offers a discount without first checking authority.",
+     "What happens if the owner denies approval.",
+     "Whether the worker always verifies the floor price before quoting."
+    ]
+   },
+   {
+    "situation": "Customer requests a repeat of a previous quote that has expired.",
+    "action": "Look up the previous quote, note its expiration, check current stock and cost, create a new quote at today's prices and inform the customer that the quote is at today's prices because the previous one expired.",
+    "evidence": [
+     42
+    ],
+    "unknowns": [
+     "Whether the worker always offers a reorder discount for repeats.",
+     "Whether the worker always notes expiration explicitly in the reply.",
+     "What the worker does if the previous quote is still valid."
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer requests a reorder referencing an expired quote and complains the new list price is higher than the old quote.",
+    "action": "Worker offers a reduced price framed as a reorder discount, staying within personal discount authority or with owner approval and never below floor price.",
+    "evidence": [
+     49,
+     50,
+     54
+    ],
+    "unknowns": [
+     "Whether a discount is offered proactively without an explicit price complaint",
+     "How the exact discount percentage is chosen and whether it is always ~2-5% off list",
+     "Whether the rule applies to reorders that are not tied to an expired quote"
+    ]
+   },
+   {
+    "situation": "Customer asks to quote the same order as an expired quote.",
+    "action": "Worker looks up the old quote, prices the same items at today's cost/list, creates a new draft quote and explicitly notes the old quote has expired so the new quote is at today's prices.",
+    "evidence": [
+     49,
+     50,
+     54
+    ],
+    "unknowns": [
+     "Whether the worker ever honors or price-matches an expired quote",
+     "Whether the expiration note is always included when no complaint is made"
+    ]
+   },
+   {
+    "situation": "Requested SKU is not in sufficient stock to meet the requested ship date and restock is after that date.",
+    "action": "Worker proposes an in-stock substitute and/or adjusts fulfillment, e.g., mixed original + substitute, all-substitute option, or delaying ship to the restock date; when a substitute is offered for a stockout the worker sometimes offers a small discount for the inconvenience.",
+    "evidence": [
+     52,
+     56
+    ],
+    "unknowns": [
+     "Criteria for selecting which substitute to offer",
+     "When a discount on a substitute is offered versus not, and what size it should be",
+     "Exact rule for choosing between partial now / wait for restock / substitute"
+    ]
+   },
+   {
+    "situation": "A price reduction the customer is asking for would exceed the worker's discount authority or would go below floor price.",
+    "action": "Worker asks the owner for permission before offering the reduced price, and only proceeds if the owner agrees to stay at or above floor.",
+    "evidence": [
+     50,
+     54
+    ],
+    "unknowns": [
+     "Whether the worker always asks for any discount beyond authority or only when floor would be breached",
+     "What owner approval criteria are and whether approval is always granted"
+    ]
+   }
+  ],
+  [
+   {
+    "situation": "Customer asks to re-quote an existing quote that has expired.",
+    "action": "Worker looks up the old quote, then re-prices the same lines using current cost/floor via get_cost and calc_price, creates a new quote at today’s list price and explicitly tells the customer the old quote expired so the price changed.",
+    "evidence": [
+     57
+    ],
+    "unknowns": [
+     "Whether the worker would honor the old price if the quote were still valid",
+     "Whether the worker would reprice only changed lines in a multi-line expired quote",
+     "Whether the worker would notify the customer if today’s price were lower than the expired price"
+    ]
+   },
+   {
+    "situation": "Customer provides an SKU that is not found in the catalog.",
+    "action": "Worker calls check_stock for the unknown SKU, receives an unknown_sku error with similar SKUs, checks stock for a similar SKU, then sends a reply asking the customer to confirm the intended SKU before proceeding.",
+    "evidence": [
+     58,
+     59
+    ],
+    "unknowns": [
+     "Which similar SKU the worker picks when multiple are suggested",
+     "What the worker does if the customer confirms a different SKU than the one already checked",
+     "What the worker does if no similar SKUs are suggested"
+    ]
+   },
+   {
+    "situation": "Customer explicitly requests a lower price on a quote.",
+    "action": "Worker creates a new draft quote with a unit price reduced within personal discount authority, notes the discount % under list as within authority, and presents it as a reorder discount.",
+    "evidence": [
+     57
+    ],
+    "unknowns": [
+     "Whether the worker would offer any discount proactively without an explicit price request",
+     "Whether the worker would ask the owner for a discount beyond authority",
+     "Whether the discount is always framed as a reorder"
+    ]
+   },
+   {
+    "situation": "Customer follows up on a request that was previously acknowledged but not yet quoted.",
+    "action": "Worker apologizes for the wait referencing the prior acknowledgement date in the reply, then provides the quote.",
+    "evidence": [
+     60
+    ],
+    "unknowns": [
+     "Whether an apology is given if there was no prior acknowledgement",
+     "How the apology wording changes with length of delay",
+     "Whether the worker would apologize for a first-time request with no prior note"
+    ]
+   },
+   {
+    "situation": "Before quoting any line item.",
+    "action": "Worker always verifies stock sufficiency for the requested qty/sku with check_stock before get_cost/calc_price/create_quote.",
+    "evidence": [
+     57,
+     58,
+     59,
+     60
+    ],
+    "unknowns": [
+     "What the worker does if stock is insufficient",
+     "Whether stock is re-checked after a discount or SKU clarification",
+     "Whether a stock check is skipped for a re-quote of a previously checked item"
+    ]
+   }
+  ]
+ ],
+ "failed": [],
+ "remerged_from": "runs/v2-cards2/c60-s1.glimmer.json"
+}

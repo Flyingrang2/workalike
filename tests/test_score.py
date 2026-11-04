@@ -1,10 +1,11 @@
 """Broken and partial episodes must not pass: the scorer is checked with mutated records."""
+
 import copy
 import random
 
-from island import scripted
-from island.score import score, score_records
-from island.tasks import make_tasks
+from testbed import scripted
+from testbed.score import score, score_records
+from testbed.tasks import make_tasks
 from workalike.desk import Desk
 from workalike.filter import clean_episode
 from workalike.record import Recorder, read_events
@@ -99,8 +100,14 @@ def test_double_acknowledgement_fails_on_already_acked_ticket(tmp_path):
     t = next(t for t in make_tasks(7, "dev", 12) if t["family"] == "ack_already_sent")
     ep = run(t, "b", tmp_path)
     reply = next(c for c in calls_of(ep) if c["name"] == "send_reply")
-    ep["turns"].insert(0, {"calls": [{**copy.deepcopy(reply), "args": {"ticket_id": reply["args"]["ticket_id"],
-                                                                         "message": "Thanks, on it."}}]})
+    ep["turns"].insert(
+        0,
+        {
+            "calls": [
+                {**copy.deepcopy(reply), "args": {"ticket_id": reply["args"]["ticket_id"], "message": "Thanks, on it."}}
+            ]
+        },
+    )
     assert "acknowledged twice" in score(t, ep)["reasons"]
 
 
@@ -127,8 +134,8 @@ def test_missing_and_duplicate_records_count_against(tmp_path):
 
 
 def test_judge_passes_reference_and_catches_order_only(tmp_path):
-    from island.gen_h1 import build
-    from island.judge_h1 import judge
+    from testbed.gen_h1 import build
+    from testbed.judge_h1 import judge
     from workalike.sft import read_jsonl
 
     out = tmp_path / "h1"
@@ -138,8 +145,9 @@ def test_judge_passes_reference_and_catches_order_only(tmp_path):
         tasks = {t["task_id"]: t for t in read_jsonl(out / "tasks" / f"{split}.jsonl")}
         for style in "ab":
             rows[style, split] = score_records(out / "records" / f"{style}-{split}.jsonl", tasks)[0]
-    ref = judge(rows["a", "eval_h1"], rows["a", "eval_h1"], rows["b", "eval_h1"],
-                rows["a", "eval_trap"], rows["b", "eval_trap"])
+    ref = judge(
+        rows["a", "eval_h1"], rows["a", "eval_h1"], rows["b", "eval_h1"], rows["a", "eval_trap"], rows["b", "eval_trap"]
+    )
     assert ref["verdict"] == "pass" and ref["first_criteria"]["pass"]
 
     # B that acknowledges twice on already-acknowledged tickets: order holds, restraint fails
@@ -161,8 +169,19 @@ def test_cost_lookup_on_a_valid_approved_quote_is_not_correct(tmp_path):
     t = family("approved_valid")
     ep = run(t, "a", tmp_path)
     sku = calls_of(ep)[0]["result"]["lines"][0]["sku"]
-    ep["turns"].insert(1, {"calls": [{"id": "x1", "name": "get_cost", "args": {"sku": sku},
-                                      "result": Desk(t["hidden"]["state"]).call("get_cost", {"sku": sku})}]})
+    ep["turns"].insert(
+        1,
+        {
+            "calls": [
+                {
+                    "id": "x1",
+                    "name": "get_cost",
+                    "args": {"sku": sku},
+                    "result": Desk(t["hidden"]["state"]).call("get_cost", {"sku": sku}),
+                }
+            ]
+        },
+    )
     s = score(t, ep)
     assert s["business_correct"] and not s["restraint_ok"] and not s["correct"]
     assert s["reasons"] == ["unneeded cost lookup"]
@@ -182,7 +201,9 @@ def test_a_second_quote_or_an_amount_the_desk_never_gave_is_wrong(tmp_path):
     ep = run(t, "a", tmp_path)
     reply = [c for c in calls_of(ep) if c["name"] == "send_reply"][-1]
     wrong = copy.deepcopy(ep)
-    [c for c in calls_of(wrong) if c["name"] == "send_reply"][-1]["args"]["message"] = reply["args"]["message"] + " Or $1.00 flat."
+    [c for c in calls_of(wrong) if c["name"] == "send_reply"][-1]["args"]["message"] = (
+        reply["args"]["message"] + " Or $1.00 flat."
+    )
     assert "reply amount the desk never gave" in score(t, wrong)["reasons"]
     early = copy.deepcopy(reply)
     early["args"]["quote_id"] = "Q-0-1"
@@ -197,8 +218,13 @@ def two_quotes(t, tmp_path, order):
     g, sku = t["grader"], t["grader"]["short"]["sku"]
     sub = next(iter(g["short"]["substitutes"]))
     later = [dict(l) for l in g["lines"]], g["short"]["restock_date"]
-    swap = [dict(l, sku=sub, unit_price=g["short"]["substitutes"][sub]) if l["sku"] == sku else dict(l)
-            for l in g["lines"]], g["need_by"]
+    swap = (
+        [
+            dict(l, sku=sub, unit_price=g["short"]["substitutes"][sub]) if l["sku"] == sku else dict(l)
+            for l in g["lines"]
+        ],
+        g["need_by"],
+    )
     calls = []
     for lines, ship in (later, swap) if order == "later_first" else (swap, later):
         calls.append(("create_quote", {"ticket_id": t["view"]["ticket_id"], "lines": lines, "ship_by": ship}))

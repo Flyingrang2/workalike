@@ -11,6 +11,7 @@ loaded so adapter names match what servers read; adapters go on the language
 model's attention and MLP projections, never the vision tower. The matched module
 names, library versions, arguments, trained tokens and steps are saved next to the adapter.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,11 +26,19 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch  # noqa: E402
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training  # noqa: E402
-from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, BitsAndBytesConfig, Trainer, TrainingArguments  # noqa: E402
+from transformers import (  # noqa: E402
+    AutoModelForCausalLM,
+    AutoModelForImageTextToText,
+    BitsAndBytesConfig,
+    Trainer,
+    TrainingArguments,
+)
 
 PAD_ID = 200018  # <|finetune_right_pad|>, pad_token_id in generation_config.json
-LANGUAGE_PROJECTIONS = (r"^(?!.*(vision|visual|image|patch|mm_|projector)).*\."
-                        r"(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$")
+LANGUAGE_PROJECTIONS = (
+    r"^(?!.*(vision|visual|image|patch|mm_|projector)).*\."
+    r"(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
+)
 
 
 class Rows(torch.utils.data.Dataset):
@@ -62,8 +71,13 @@ def collate(batch):
 def load_base(path, causal: bool):
     gen = json.loads((Path(path) / "generation_config.json").read_text())
     assert gen.get("pad_token_id") == PAD_ID, f"pad_token_id is {gen.get('pad_token_id')}, expected {PAD_ID}"
-    bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True,
-                             bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_quant_storage=torch.bfloat16)
+    bnb = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_quant_storage=torch.bfloat16,
+    )
     cls = AutoModelForCausalLM if causal else AutoModelForImageTextToText
     model = cls.from_pretrained(path, quantization_config=bnb, dtype=torch.bfloat16, device_map="auto")
     placed = set(getattr(model, "hf_device_map", {}).values())
@@ -88,7 +102,9 @@ def main() -> None:
     ap.add_argument("--max-len", type=int, default=4096)
     ap.add_argument("--max-steps", type=int, default=-1, help="for smoke runs")
     ap.add_argument("--limit", type=int, help="train on the first N rows only (overfit checks, data-size curves)")
-    ap.add_argument("--seed", type=int, default=42, help="Trainer seed (42 is the Trainer default the E2 runs used)")
+    ap.add_argument(
+        "--seed", type=int, default=42, help="Trainer seed (42 is the Trainer default the first experiments used)"
+    )
     ap.add_argument("--target", default=LANGUAGE_PROJECTIONS)
     ap.add_argument("--causal", action="store_true", help="load with AutoModelForCausalLM instead")
     args = ap.parse_args()
@@ -102,8 +118,12 @@ def main() -> None:
         raise SystemExit("no modules matched --target")
     (out / "lora_modules.txt").write_text("\n".join(targets) + "\n")
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
-    model = get_peft_model(model, LoraConfig(r=args.rank, lora_alpha=2 * args.rank, lora_dropout=0.05,
-                                             target_modules=args.target, task_type="CAUSAL_LM"))
+    model = get_peft_model(
+        model,
+        LoraConfig(
+            r=args.rank, lora_alpha=2 * args.rank, lora_dropout=0.05, target_modules=args.target, task_type="CAUSAL_LM"
+        ),
+    )
     model.print_trainable_parameters()
 
     data = Rows(args.data, args.max_len)
@@ -111,23 +131,48 @@ def main() -> None:
         data.rows = data.rows[: args.limit]
     trainer = Trainer(
         model=model,
-        args=TrainingArguments(output_dir=str(out), num_train_epochs=args.epochs, max_steps=args.max_steps,
-                               per_device_train_batch_size=args.batch, gradient_accumulation_steps=args.accum,
-                               learning_rate=args.lr, lr_scheduler_type="cosine", warmup_steps=0.05, bf16=True,
-                               logging_steps=1, save_strategy="epoch", save_total_limit=1, save_only_model=True, report_to=[],
-                               gradient_checkpointing=True, remove_unused_columns=False,
-                               seed=args.seed, data_seed=args.seed),
+        args=TrainingArguments(
+            output_dir=str(out),
+            num_train_epochs=args.epochs,
+            max_steps=args.max_steps,
+            per_device_train_batch_size=args.batch,
+            gradient_accumulation_steps=args.accum,
+            learning_rate=args.lr,
+            lr_scheduler_type="cosine",
+            warmup_steps=0.05,
+            bf16=True,
+            logging_steps=1,
+            save_strategy="epoch",
+            save_total_limit=1,
+            save_only_model=True,
+            report_to=[],
+            gradient_checkpointing=True,
+            remove_unused_columns=False,
+            seed=args.seed,
+            data_seed=args.seed,
+        ),
         train_dataset=data,
         data_collator=collate,
     )
     trainer.train()
     model.save_pretrained(out)
-    versions = {p: importlib.metadata.version(p) for p in ("torch", "transformers", "peft", "bitsandbytes", "accelerate")}
+    versions = {
+        p: importlib.metadata.version(p) for p in ("torch", "transformers", "peft", "bitsandbytes", "accelerate")
+    }
     trained = sum(sum(l != -100 for l in r["labels"]) for r in data.rows)
-    (out / "train_args.json").write_text(json.dumps({**vars(args), "versions": versions, "rows": len(data),
-                                                     "trained_tokens_per_epoch": trained,
-                                                     "optimizer_steps": trainer.state.global_step,
-                                                     "log": trainer.state.log_history}, indent=2))
+    (out / "train_args.json").write_text(
+        json.dumps(
+            {
+                **vars(args),
+                "versions": versions,
+                "rows": len(data),
+                "trained_tokens_per_epoch": trained,
+                "optimizer_steps": trainer.state.global_step,
+                "log": trainer.state.log_history,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

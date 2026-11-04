@@ -6,9 +6,9 @@ with loss only on the model's own turns. Rendering is checked to be prefix
 stable: at every assistant turn, the prompt the server would build at inference
 time is exactly the text that precedes that turn in the training example.
 """
+
 from __future__ import annotations
 
-GEN_PROMPT = "<|start|>assistant"
 IGNORE = -100
 
 
@@ -23,8 +23,7 @@ def load_tokenizer(path):
 
 
 def render(tok, messages, tools, add_generation_prompt=False) -> str:
-    return tok.apply_chat_template(messages, tools=tools, tokenize=False,
-                                   add_generation_prompt=add_generation_prompt)
+    return tok.apply_chat_template(messages, tools=tools, tokenize=False, add_generation_prompt=add_generation_prompt)
 
 
 def segments(tok, messages, tools) -> list[tuple[str, bool]]:
@@ -35,15 +34,15 @@ def segments(tok, messages, tools) -> list[tuple[str, bool]]:
         cur = render(tok, messages[: k + 1], tools)
         if not cur.startswith(prev):
             raise RenderError(f"message {k} changes the text before it")
-        piece = cur[len(prev):]
+        piece = cur[len(prev) :]
         if messages[k]["role"] == "assistant":
             prompt = render(tok, messages[:k], tools, add_generation_prompt=True)
             if not prompt.startswith(prev):
                 raise RenderError(f"generation prompt at message {k} does not extend the history")
-            head = prompt[len(prev):]
+            head = prompt[len(prev) :]
             if not piece.startswith(head):
                 raise RenderError(f"assistant message {k} does not start with the generation prompt")
-            out += [(head, False), (piece[len(head):], True)]
+            out += [(head, False), (piece[len(head) :], True)]
         else:
             out.append((piece, False))
         prev = cur

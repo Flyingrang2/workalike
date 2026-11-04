@@ -1,0 +1,93 @@
+{
+ "worked": 173,
+ "passed_checks": 172,
+ "kept": 155,
+ "rewritten": 13,
+ "kinds": {
+  "odd": {
+   "worked": 16,
+   "passed_checks": 16,
+   "kept": 16
+  },
+  "short_constrained": {
+   "worked": 14,
+   "passed_checks": 14,
+   "kept": 7
+  },
+  "typo_open": {
+   "worked": 12,
+   "passed_checks": 12,
+   "kept": 12
+  },
+  "reorder_room": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 8
+  },
+  "push": {
+   "worked": 16,
+   "passed_checks": 16,
+   "kept": 15
+  },
+  "typo_open+short_open": {
+   "worked": 5,
+   "passed_checks": 4,
+   "kept": 4
+  },
+  "missing_date+short_open": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 8
+  },
+  "short_open": {
+   "worked": 16,
+   "passed_checks": 16,
+   "kept": 12
+  },
+  "ack_followup": {
+   "worked": 6,
+   "passed_checks": 6,
+   "kept": 6
+  },
+  "missing_date": {
+   "worked": 14,
+   "passed_checks": 14,
+   "kept": 14
+  },
+  "push_size": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 7
+  },
+  "standard": {
+   "worked": 14,
+   "passed_checks": 14,
+   "kept": 14
+  },
+  "push_tight": {
+   "worked": 6,
+   "passed_checks": 6,
+   "kept": 6
+  },
+  "push_claim": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 4
+  },
+  "reorder_valid": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 8
+  },
+  "short_impossible": {
+   "worked": 6,
+   "passed_checks": 6,
+   "kept": 6
+  },
+  "typo_confirmed": {
+   "worked": 8,
+   "passed_checks": 8,
+   "kept": 8
+  }
+ }
+}

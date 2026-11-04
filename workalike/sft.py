@@ -3,6 +3,7 @@
 Rows carry no task id, worker label or split; that bookkeeping lives in the
 run manifest next to the files.
 """
+
 from __future__ import annotations
 
 import json

@@ -9,7 +9,8 @@ OUT=${1:?usage: lora_practice.sh <out dir>}
 PY=.venv-serve/bin/python
 B=baselines/test24
 C=baselines/test24b
-T=checked
+T=${T:-checked}                   # a name for this run; TEACHER is the rules as plain text, by default the person's checked rules
+TEACHER=${TEACHER:-$B/arms/$T.txt}
 A=adapters/practice-$T
 DATA=data/practice-$T
 mkdir -p "$OUT" adapters "$DATA/sft"
@@ -36,11 +37,11 @@ start_server() {  # log, expected model name, adapters
     echo "the server did not come up: $1"; exit 1
 }
 trap 'stop_server' EXIT
-sha256sum $B/arms/$T.txt $C/*.jsonl > "$OUT/sheet.sha256"
+sha256sum "$TEACHER" $C/*.jsonl > "$OUT/sheet.sha256"
 
 if [ ! -f "$OUT/practice/summary.json" ]; then
     start_server "$OUT/server-teach.log" muse-glimmer ""
-    $PY -m island.practice --teacher $B/arms/$T.txt --out "$OUT/practice" --sft "$DATA/sft/$T-train.jsonl" | tee "$OUT/practice.log"
+    $PY -m testbed.practice --teacher "$TEACHER" --out "$OUT/practice" --sft "$DATA/sft/$T-train.jsonl" | tee "$OUT/practice.log"
 fi
 stop_server
 if [ ! -f "$A/trained.ok" ]; then
@@ -50,7 +51,7 @@ if [ ! -f "$A/trained.ok" ]; then
     touch "$A/trained.ok"
 fi
 start_server "$OUT/server-test.log" "p-$T" "p-$T=$A"
-$PY -m island.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm $T=$B/arms/$T.txt --arm p-$T=$B/arms/none.txt --served p-$T=p-$T \
+$PY -m testbed.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm "$T=$TEACHER" --arm p-$T=$B/arms/none.txt --served p-$T=p-$T \
     --adapter-prompt product --rounds 2 --parallel 6 --fail $B/fail.jsonl --fail-rounds 3 --fail-arm p-$T --out "$OUT/regress" > "$OUT/regress.log"
-$PY -m island.run24 --tasks $C/tickets.jsonl --answers $C/answers.jsonl --arm none=$B/arms/none.txt --arm $T=$B/arms/$T.txt \
+$PY -m testbed.run24 --tasks $C/tickets.jsonl --answers $C/answers.jsonl --arm none=$B/arms/none.txt --arm "$T=$TEACHER" \
     --arm p-$T=$B/arms/none.txt --served p-$T=p-$T --adapter-prompt product --rounds 2 --parallel 6 --out "$OUT/new" > "$OUT/new.log"

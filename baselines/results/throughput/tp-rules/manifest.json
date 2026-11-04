@@ -1,0 +1,13 @@
+{
+ "tasks": "dbbbe4a749936af1c7a8df93b585bceef67b03e19323d475ce64e890e82b22e1",
+ "arms": {
+  "checked": "1702c1ef6eb937f01a37d04d8802fd302ec4d963ac8aa4d89744a072081fb56a"
+ },
+ "fail": null,
+ "rounds": 1,
+ "fail_rounds": 3,
+ "model": "muse-glimmer",
+ "served": {},
+ "max_tokens": 16000,
+ "temperature": 0
+}

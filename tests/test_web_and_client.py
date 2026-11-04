@@ -1,4 +1,5 @@
 """The web entrance leaves the same records as the tool entrance, and the HTTP client speaks OpenAI format."""
+
 import json
 import random
 import threading
@@ -7,16 +8,15 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from island import scripted
-from island.score import score_records
-from island.serve_web import sessions_for
-from island.tasks import make_tasks
+from testbed import scripted
+from testbed.score import score_records
+from testbed.tasks import make_tasks
 from workalike import agent
 from workalike.desk import Desk
 from workalike.filter import clean_episode
 from workalike.model_client import ChatModel
 from workalike.record import Recorder, group_episodes, read_events
-from workalike.web import WebDesk, describe, serve_in_background
+from workalike.web import WebDesk, describe, serve_in_background, sessions_for
 
 
 def call_to_form(name, args):
@@ -77,8 +77,11 @@ def test_other_sites_cannot_post_into_the_record(tmp_path):
     url = f"http://127.0.0.1:{server.server_address[1]}"
     form = {"tool": "send_reply", "message": "injected"}
     try:
-        for extra, headers in [({}, {}), ({"csrf": web.token}, {"Origin": "https://evil.example"}),
-                               ({"csrf": web.token}, {"Host": "evil.example"})]:
+        for extra, headers in [
+            ({}, {}),
+            ({"csrf": web.token}, {"Origin": "https://evil.example"}),
+            ({"csrf": web.token}, {"Host": "evil.example"}),
+        ]:
             try:
                 post(url + "/act", {**form, **extra}, headers)
                 raise AssertionError("request should be rejected")
@@ -106,13 +109,26 @@ class _FakeServer(BaseHTTPRequestHandler):
         _FakeServer.bodies.append(body)
         turn = sum(1 for m in body["messages"] if m["role"] == "assistant")
         if turn == 0:
-            msg = {"role": "assistant", "content": None, "reasoning": "check cost first",
-                   "tool_calls": [{"id": "x1", "type": "function",
-                                   "function": {"name": "get_cost", "arguments": '{"sku": "MUG-11W"}'}}]}
+            msg = {
+                "role": "assistant",
+                "content": None,
+                "reasoning": "check cost first",
+                "tool_calls": [
+                    {
+                        "id": "x1",
+                        "type": "function",
+                        "function": {"name": "get_cost", "arguments": '{"sku": "MUG-11W"}'},
+                    }
+                ],
+            }
         else:
             msg = {"role": "assistant", "content": "Done."}
-        data = json.dumps({"choices": [{"message": msg, "finish_reason": "stop"}],
-                           "usage": {"prompt_tokens": 10, "completion_tokens": 2}}).encode()
+        data = json.dumps(
+            {
+                "choices": [{"message": msg, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 2},
+            }
+        ).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -147,8 +163,9 @@ def test_chat_client_round_trip(tmp_path):
 
 
 def test_a_second_sitting_keeps_finished_tickets_and_drops_a_half_worked_one(tmp_path):
-    from island.serve_web import keep_finished
     from workalike.record import Recorder
+    from workalike.web import keep_finished
+
     records = tmp_path / "records.jsonl"
     rec = Recorder(records)
     rec.start("e-1", {"ticket_id": "T-1"}, task_id="dev-0000", actor="me")

@@ -6,14 +6,16 @@ code that builds training examples, and every call goes through the Desk, so the
 agent leaves the same record a person would. Reasoning is kept as a private note
 and is not carried into later turns, matching how training examples look.
 """
+
 from __future__ import annotations
 
 from .desk import TOOL_SPECS, Desk
 from .serialize import SYSTEM_PROMPT, final_message, head_messages, turn_messages
 
 
-def run(desk: Desk, view: dict, model, max_turns: int = 24, system: str | None = None,
-        env=None) -> tuple[list[dict], str]:
+def run(
+    desk: Desk, view: dict, model, max_turns: int = 24, system: str | None = None, env=None
+) -> tuple[list[dict], str]:
     """Work one ticket. Returns (messages, status); the caller starts and ends the record.
 
     env is a desk version from workalike.envs (None is quote-desk/1); the desk must use the same one.

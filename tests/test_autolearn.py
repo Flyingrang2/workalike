@@ -1,7 +1,8 @@
 """The learning round with fakes: records in, a version out, the adapter on only if it is no worse."""
+
 import json
 
-from island.tasks2 import make_tasks
+from testbed.tasks2 import make_tasks
 from workalike import autolearn
 from workalike.desk import Desk
 from workalike.envs import V2
@@ -20,7 +21,16 @@ def record_tickets(path, n):
         rec.end("done")
 
 
-TALLY = {"ready": 2, "right_hold": 1, "needless_hold": 1, "dangerous": 0, "failed": 0, "good": 3, "look": 0, "tickets": 4}
+TALLY = {
+    "ready": 2,
+    "right_hold": 1,
+    "needless_hold": 1,
+    "dangerous": 0,
+    "failed": 0,
+    "good": 3,
+    "look": 0,
+    "tickets": 4,
+}
 
 
 def test_records_become_an_active_adapter_and_a_worse_one_does_not_replace_it(tmp_path):
@@ -33,7 +43,7 @@ def test_records_become_an_active_adapter_and_a_worse_one_does_not_replace_it(tm
     assert active["version"] == "v1" and active["tickets"] == 6 and active["rows"] >= 6
     assert trained and "v1" in trained[0]["adapter"]
     row = json.loads(next((versions / "v1" / "sft").glob("*-train.jsonl")).read_text().splitlines()[0])
-    assert row["messages"][0]["content"] == V2.system_prompt      # trained on the prompt it will work under
+    assert row["messages"][0]["content"] == V2.system_prompt  # trained on the prompt it will work under
     worse = {**TALLY, "good": 2, "right_hold": 0}
     m = autolearn.learn_once(records, versions, shell, lambda name, path: worse, target=12)
     assert m["activated"] is False and autolearn.active_adapter(versions)["version"] == "v1"

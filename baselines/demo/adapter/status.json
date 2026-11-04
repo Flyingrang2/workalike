@@ -1,0 +1,4 @@
+{"state": "one person's way, from a practice run on the sample desk",
+ "steps": [{"t": "2026-11-02", "what": "173 tickets practised from the rules, 155 kept, trained, tested on 24 new tickets, twice"}],
+ "active": {"version": "practice-checked", "name": "p-checked", "path": "adapters/practice-checked", "rule_version": 39,
+            "prompt": "product", "tickets": 155, "check": {"good": "21, 20", "tickets": 24, "dangerous": "0, 1"}}}

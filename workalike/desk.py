@@ -4,6 +4,7 @@ Every tool is deterministic: the same state and arguments give the same result.
 All calls go through Desk, which hands each call and its result to the recorder,
 so a person, a scripted worker and a model leave the same kind of record.
 """
+
 from __future__ import annotations
 
 import copy
@@ -53,6 +54,7 @@ def customer_prices(results) -> set[int]:
         elif isinstance(r, list):
             for v in r:
                 walk(v)
+
     walk(list(results))
     return out
 
@@ -72,19 +74,27 @@ _SKU = {"type": "string", "description": "Catalog item code, e.g. MUG-11W."}
 _QTY = {"type": "integer", "description": "Number of units."}
 
 TOOL_SPECS = [
-    _fn("lookup_quote",
+    _fn(
+        "lookup_quote",
         "Look up an earlier quote by id: its status, the date it is valid until, and its lines.",
-        {"quote_id": {"type": "string"}}, ["quote_id"]),
-    _fn("get_cost",
-        "Get the current unit cost of a catalog item.",
-        {"sku": _SKU}, ["sku"]),
-    _fn("check_stock",
+        {"quote_id": {"type": "string"}},
+        ["quote_id"],
+    ),
+    _fn("get_cost", "Get the current unit cost of a catalog item.", {"sku": _SKU}, ["sku"]),
+    _fn(
+        "check_stock",
         "Check whether an item is in stock for a quantity. When it is short, shows the restock date and in-stock substitutes.",
-        {"sku": _SKU, "qty": _QTY}, ["sku", "qty"]),
-    _fn("calc_price",
+        {"sku": _SKU, "qty": _QTY},
+        ["sku", "qty"],
+    ),
+    _fn(
+        "calc_price",
         "Price one quote line from its unit cost, using the shop's standard markup and quantity breaks.",
-        {"sku": _SKU, "qty": _QTY, "unit_cost": {"type": "number"}}, ["sku", "qty", "unit_cost"]),
-    _fn("create_quote",
+        {"sku": _SKU, "qty": _QTY, "unit_cost": {"type": "number"}},
+        ["sku", "qty", "unit_cost"],
+    ),
+    _fn(
+        "create_quote",
         "Create a draft quote for a ticket. Rejects prices under the margin floor and ship dates the stock cannot meet.",
         {
             "ticket_id": {"type": "string"},
@@ -98,15 +108,18 @@ TOOL_SPECS = [
             },
             "ship_by": {"type": "string", "description": "Ship date, YYYY-MM-DD."},
         },
-        ["ticket_id", "lines", "ship_by"]),
-    _fn("send_reply",
+        ["ticket_id", "lines", "ship_by"],
+    ),
+    _fn(
+        "send_reply",
         "Reply to the customer on a ticket, optionally attaching a draft quote. Replies are held for the owner's approval.",
         {
             "ticket_id": {"type": "string"},
             "message": {"type": "string"},
             "quote_id": {"type": "string", "description": "Draft quote to attach, if any."},
         },
-        ["ticket_id", "message"]),
+        ["ticket_id", "message"],
+    ),
 ]
 SPEC_BY_NAME = {s["function"]["name"]: s["function"] for s in TOOL_SPECS}
 
@@ -150,8 +163,12 @@ def _own_quote(state, quote_id):
     draft = state["drafts"].get(quote_id)
     if draft is None:
         return {"error": "unknown_quote", "quote_id": quote_id}
-    return {"quote_id": quote_id, "status": draft.get("status", "issued"), "valid_until": None,
-            "lines": [{**line, "name": state["catalog"][line["sku"]]["name"]} for line in draft["lines"]]}
+    return {
+        "quote_id": quote_id,
+        "status": draft.get("status", "issued"),
+        "valid_until": None,
+        "lines": [{**line, "name": state["catalog"][line["sku"]]["name"]} for line in draft["lines"]],
+    }
 
 
 def lookup_quote(state, quote_id):
@@ -160,8 +177,12 @@ def lookup_quote(state, quote_id):
     if quote is None:
         return _own_quote(state, quote_id)
     status = "approved" if quote["valid_until"] >= state["today"] else "expired"
-    return {"quote_id": quote_id, "status": status, "valid_until": quote["valid_until"],
-            "lines": [dict(line) for line in quote["lines"]]}
+    return {
+        "quote_id": quote_id,
+        "status": status,
+        "valid_until": quote["valid_until"],
+        "lines": [dict(line) for line in quote["lines"]],
+    }
 
 
 def get_cost(state, sku):
@@ -193,8 +214,14 @@ def calc_price(state, sku, qty, unit_cost):
     if qty <= 0 or unit_cost <= 0:
         return {"error": "invalid_value"}
     price = unit_price_for(unit_cost, qty)
-    return {"sku": sku, "qty": qty, "unit_cost": unit_cost, "unit_price": price,
-            "line_total": round(price * qty, 2), "margin_pct": round((price - unit_cost) / price * 100, 1)}
+    return {
+        "sku": sku,
+        "qty": qty,
+        "unit_cost": unit_cost,
+        "unit_price": price,
+        "line_total": round(price * qty, 2),
+        "margin_pct": round((price - unit_cost) / price * 100, 1),
+    }
 
 
 def create_quote(state, ticket_id, lines, ship_by):
@@ -219,12 +246,24 @@ def create_quote(state, ticket_id, lines, ship_by):
             return {"error": "below_margin_floor", "sku": line["sku"]}
         if line["qty"] > item["on_hand"] and (item["restock_date"] is None or ship_by < item["restock_date"]):
             return {"error": "stock_short_for_ship_date", "sku": line["sku"]}
-        out.append({"sku": line["sku"], "qty": line["qty"], "unit_price": line["unit_price"],
-                    "line_total": round(line["unit_price"] * line["qty"], 2)})
+        out.append(
+            {
+                "sku": line["sku"],
+                "qty": line["qty"],
+                "unit_price": line["unit_price"],
+                "line_total": round(line["unit_price"] * line["qty"], 2),
+            }
+        )
     quote_id = f"Q-{ticket_id.split('-')[-1]}-{len(state['drafts']) + 1}"
     state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out, "ship_by": ship_by, "status": "draft"}
-    return {"quote_id": quote_id, "ticket_id": ticket_id, "lines": out,
-            "total": round(sum(l["line_total"] for l in out), 2), "ship_by": ship_by, "status": "draft"}
+    return {
+        "quote_id": quote_id,
+        "ticket_id": ticket_id,
+        "lines": out,
+        "total": round(sum(l["line_total"] for l in out), 2),
+        "ship_by": ship_by,
+        "status": "draft",
+    }
 
 
 def send_reply(state, ticket_id, message, quote_id=None):

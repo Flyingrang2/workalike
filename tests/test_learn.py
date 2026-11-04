@@ -1,12 +1,13 @@
 """Learning from your own records: what review shows is what build trains on, minus what you leave out."""
+
 import json
 import urllib.parse
 import urllib.request
 
 import pytest
 
-from island.gen_h1 import build as build_h1
-from workalike.learn import build, episodes, list_versions, Review
+from testbed.gen_h1 import build as build_h1
+from workalike.learn import Review, build, episodes, list_versions
 from workalike.record import Recorder
 from workalike.sft import read_jsonl, sft_row
 from workalike.web import serve_in_background
@@ -18,7 +19,9 @@ def records(tmp_path_factory):
     build_h1(out, 7)
     path = out / "records" / "a-dev.jsonl"
     rec = Recorder(path)  # a ticket the person opened and never finished
-    rec.start("e-unfinished", {"today": "2026-11-02", "ticket_id": "T-1", "from": "X", "body": "Quote?"}, actor="w-82d9d6")
+    rec.start(
+        "e-unfinished", {"today": "2026-11-02", "ticket_id": "T-1", "from": "X", "body": "Quote?"}, actor="w-82d9d6"
+    )
     return path
 
 

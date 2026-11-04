@@ -6,6 +6,7 @@
 For every sft/*-train.jsonl it writes sft/*-train.tok.jsonl (input_ids, attention_mask,
 labels) and a preview of the first row in render/. Exits non-zero if any check fails.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,8 +59,10 @@ def main() -> int:
         (data / "render").mkdir(exist_ok=True)
         (data / "render" / f"{path.stem}-0.txt").write_text(preview(tok, rows[0]["messages"], rows[0]["tools"]))
         lengths = [s["tokens"] for s in stats]
-        print(f"{path.name}: rows {len(rows)}, tokens mean {statistics.mean(lengths):.0f} max {max(lengths)}, "
-              f"trained share {sum(s['trained'] for s in stats) / sum(lengths):.1%}")
+        print(
+            f"{path.name}: rows {len(rows)}, tokens mean {statistics.mean(lengths):.0f} max {max(lengths)}, "
+            f"trained share {sum(s['trained'] for s in stats) / sum(lengths):.1%}"
+        )
 
     if failures:
         print(f"{len(failures)} failures")

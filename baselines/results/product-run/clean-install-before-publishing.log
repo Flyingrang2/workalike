@@ -1,0 +1,24 @@
+SETUP_START 00:38:02
+SETUP_EXIT 0 434 seconds 00:45:16
+RUN_START 00:45:16
+agent page bytes 29658 | adapter named on page: False
+sent before work: False
+waited 30.0
+{'id': 'j001', 'status': 'done', 'outcome': 'draft', 'adapter': 'p-checked', 'seconds': 29, 'tokens': 549, 'case': 0}
+checks: [('답장 초안', True), ('가격은 견적으로만', True), ('원가 비공개', True), ('금액은 데스크 값', True), ('견적번호 확인', True), ('내부 기준 비공개', True), ('견적 Q-407904-1', True)]
+ticket: T-407904
+draft: Morning Callum,
+
+Thanks for following up. I checked Q-4232 — that quote expired on 2026-11-02, so I’ve re-priced it at today’s costs.
+
+For 21 x 24x36 poster PST-2436:
+* Unit price: $8.23
+* Line total: $172.83
+* Stock is on hand, so we can ship by 2026-12-18, which is on or before your requested December 21.
+
+I’ve attached a draft quote Q-407904-1 for your review. Please let me know if you’d like to proceed or adjust anything.
+
+Best regards
+sent before approval: False
+sent after approval: 1
+CHECK_DONE

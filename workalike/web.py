@@ -6,17 +6,20 @@ the tool entrance, so tasks, records and the scorer are shared by both entrances
 Results are shown as plain sentences in an activity log, newest first.
 The page is laid out to fit a 1280x800 viewport without scrolling.
 """
+
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs
 
 from .desk import Desk
-from .record import Recorder
+from .record import Recorder, group_episodes, read_events
 
 FINAL = "Done."
 
@@ -47,8 +50,10 @@ def describe(name: str, args: dict, r: dict) -> str:
         subs = ", ".join(f"{s['sku']} ({s['name']}, {s['on_hand']:,} on hand)" for s in r["substitutes"]) or "none"
         return text + f"short. Restock on {r['restock_date']}. In-stock substitutes: {subs}."
     if name == "calc_price":
-        return (f"{r['sku']} x {r['qty']:,} at cost {_money(r['unit_cost'])}: unit price {_money(r['unit_price'])}, "
-                f"line total {_money(r['line_total'])}, margin {r['margin_pct']}%.")
+        return (
+            f"{r['sku']} x {r['qty']:,} at cost {_money(r['unit_cost'])}: unit price {_money(r['unit_price'])}, "
+            f"line total {_money(r['line_total'])}, margin {r['margin_pct']}%."
+        )
     if name == "create_quote":
         lines = "; ".join(f"{l['qty']:,} x {l['sku']} at {_money(l['unit_price'])}" for l in r["lines"])
         return f"Draft quote {r['quote_id']} created: {lines}. Total {_money(r['total'])}, ship by {r['ship_by']}."
@@ -77,12 +82,21 @@ def form_to_call(form: dict[str, str], ticket_id: str) -> tuple[str, dict]:
     if tool == "check_stock":
         return tool, {"sku": f.get("sku", ""), "qty": _num(f.get("qty", ""), int)}
     if tool == "calc_price":
-        return tool, {"sku": f.get("sku", ""), "qty": _num(f.get("qty", ""), int),
-                      "unit_cost": _num(f.get("unit_cost", ""), float)}
+        return tool, {
+            "sku": f.get("sku", ""),
+            "qty": _num(f.get("qty", ""), int),
+            "unit_cost": _num(f.get("unit_cost", ""), float),
+        }
     if tool == "create_quote":
-        lines = [{"sku": f[f"sku{i}"], "qty": _num(f.get(f"qty{i}", ""), int),
-                  "unit_price": _num(f.get(f"price{i}", ""), float)}
-                 for i in (1, 2, 3) if f.get(f"sku{i}")]
+        lines = [
+            {
+                "sku": f[f"sku{i}"],
+                "qty": _num(f.get(f"qty{i}", ""), int),
+                "unit_price": _num(f.get(f"price{i}", ""), float),
+            }
+            for i in (1, 2, 3)
+            if f.get(f"sku{i}")
+        ]
         return tool, {"ticket_id": ticket_id, "lines": lines, "ship_by": f.get("ship_by", "")}
     if tool == "send_reply":
         args = {"ticket_id": ticket_id, "message": form.get("message", "")}
@@ -126,8 +140,7 @@ class WebDesk:
         self.log = []
         if self.current:
             s = self.current
-            self.recorder.start(s["episode"], s["view"], task_id=s.get("task_id"), actor=s.get("actor"),
-                                entrance="web")
+            self.recorder.start(s["episode"], s["view"], task_id=s.get("task_id"), actor=s.get("actor"), entrance="web")
             self.desk = Desk(s["state"], self.recorder)
 
     def act(self, form: dict[str, str]) -> None:
@@ -155,23 +168,34 @@ class WebDesk:
             self.finish()
 
     def status(self) -> dict:
-        return {"task_id": self.current.get("task_id") if self.current else None,
-                "episode": self.current["episode"] if self.current else None, "finished": self.finished}
+        return {
+            "task_id": self.current.get("task_id") if self.current else None,
+            "episode": self.current["episode"] if self.current else None,
+            "finished": self.finished,
+        }
 
     def page(self) -> str:
         e = html.escape
         if not self.current:
-            return f"<!doctype html><title>Quote desk</title><style>{CSS}</style><header><b>Quote desk</b></header>" \
-                   "<main><div class='card'>No more tickets.</div></main>"
+            return (
+                f"<!doctype html><title>Quote desk</title><style>{CSS}</style><header><b>Quote desk</b></header>"
+                "<main><div class='card'>No more tickets.</div></main>"
+            )
         v = self.current["view"]
-        thread = "".join(f"<p><small>{e(m['date'])}, {e(m['who'])}:</small><br>{e(m['text'])}</p>"
-                         for m in v.get("thread", []))
-        ticket = (f"<b>From:</b> {e(v['from'])}\n<h2 style='margin-top:8px'>New message</h2>{e(v['body'])}"
-                  + (f"<h2 style='margin-top:10px'>Earlier in this thread</h2>{thread}" if thread else ""))
-        log = "".join(
-            f"<p class='{'err' if 'error' in c['result'] else ''}'><small>{e(c['name'])} "
-            f"{e(json.dumps(c['args'], ensure_ascii=False))}</small><br>{e(describe(c['name'], c['args'], c['result']))}</p>"
-            for c in self.log) or "<p><small>Nothing yet.</small></p>"
+        thread = "".join(
+            f"<p><small>{e(m['date'])}, {e(m['who'])}:</small><br>{e(m['text'])}</p>" for m in v.get("thread", [])
+        )
+        ticket = f"<b>From:</b> {e(v['from'])}\n<h2 style='margin-top:8px'>New message</h2>{e(v['body'])}" + (
+            f"<h2 style='margin-top:10px'>Earlier in this thread</h2>{thread}" if thread else ""
+        )
+        log = (
+            "".join(
+                f"<p class='{'err' if 'error' in c['result'] else ''}'><small>{e(c['name'])} "
+                f"{e(json.dumps(c['args'], ensure_ascii=False))}</small><br>{e(describe(c['name'], c['args'], c['result']))}</p>"
+                for c in self.log
+            )
+            or "<p><small>Nothing yet.</small></p>"
+        )
 
         def inp(name, label, cls=""):
             return f"<label>{label} <input name='{name}' class='{cls}' autocomplete='off'></label>"
@@ -182,32 +206,75 @@ class WebDesk:
             buttons = "".join(f"<button name='tool' value='{t}'>{lab}</button> " for t, lab in tool_buttons)
             return f"<form method='post' action='/act' class='{cls}'>{token}{body}<div>{buttons}</div></form>"
 
-        quote_rows = "".join(f"<div class='row'>{inp(f'sku{i}', f'SKU {i}')}{inp(f'qty{i}', 'Qty', 'short')}"
-                             f"{inp(f'price{i}', 'Unit price', 'short')}</div>" for i in (1, 2, 3))
+        quote_rows = "".join(
+            f"<div class='row'>{inp(f'sku{i}', f'SKU {i}')}{inp(f'qty{i}', 'Qty', 'short')}"
+            f"{inp(f'price{i}', 'Unit price', 'short')}</div>"
+            for i in (1, 2, 3)
+        )
         forms = (
             form([("lookup_quote", "Look up quote")], "<h2>Earlier quote</h2>" + inp("quote_id", "Quote id"))
-            + form([("get_cost", "Get cost"), ("check_stock", "Check stock")],
-                   "<h2>Item</h2>" + inp("sku", "SKU") + inp("qty", "Qty", "short"))
-            + form([("calc_price", "Calculate price")],
-                   "<h2>Price a line</h2>" + inp("sku", "SKU") + inp("qty", "Qty", "short") + inp("unit_cost", "Unit cost", "short"),
-                   "card wide")
-            + form([("create_quote", "Create quote")],
-                   "<h2>Create quote</h2>" + quote_rows + inp("ship_by", "Ship by (YYYY-MM-DD)"), "card wide")
-            + form([("send_reply", "Send reply")],
-                   "<h2>Reply to customer</h2><textarea name='message'></textarea>" + inp("quote_id", "Attach quote id"),
-                   "card wide")
+            + form(
+                [("get_cost", "Get cost"), ("check_stock", "Check stock")],
+                "<h2>Item</h2>" + inp("sku", "SKU") + inp("qty", "Qty", "short"),
+            )
+            + form(
+                [("calc_price", "Calculate price")],
+                "<h2>Price a line</h2>"
+                + inp("sku", "SKU")
+                + inp("qty", "Qty", "short")
+                + inp("unit_cost", "Unit cost", "short"),
+                "card wide",
+            )
+            + form(
+                [("create_quote", "Create quote")],
+                "<h2>Create quote</h2>" + quote_rows + inp("ship_by", "Ship by (YYYY-MM-DD)"),
+                "card wide",
+            )
+            + form(
+                [("send_reply", "Send reply")],
+                "<h2>Reply to customer</h2><textarea name='message'></textarea>" + inp("quote_id", "Attach quote id"),
+                "card wide",
+            )
         )
-        return (f"<!doctype html><html><head><meta charset='utf-8'><title>Quote desk</title><style>{CSS}</style></head>"
-                f"<body><header><b>Quote desk</b><span>Ticket {e(v['ticket_id'])}</span><span>Today {e(v['today'])}</span>"
-                f"<form method='post' action='/finish'>{token}<button class='finish'>Finish ticket</button></form></header>"
-                f"<main><div class='col'><div class='card ticket'><h2>Ticket</h2>{ticket}</div>"
-                f"<div class='card log'><h2>Activity (newest first)</h2>{log}</div></div>"
-                f"<div class='grid'>{forms}</div></main></body></html>")
+        return (
+            f"<!doctype html><html><head><meta charset='utf-8'><title>Quote desk</title><style>{CSS}</style></head>"
+            f"<body><header><b>Quote desk</b><span>Ticket {e(v['ticket_id'])}</span><span>Today {e(v['today'])}</span>"
+            f"<form method='post' action='/finish'>{token}<button class='finish'>Finish ticket</button></form></header>"
+            f"<main><div class='col'><div class='card ticket'><h2>Ticket</h2>{ticket}</div>"
+            f"<div class='card log'><h2>Activity (newest first)</h2>{log}</div></div>"
+            f"<div class='grid'>{forms}</div></main></body></html>"
+        )
+
+
+def sessions_for(tasks: list[dict], actor: str) -> list[dict]:
+    return [
+        {
+            "episode": "e-" + hashlib.sha256(f"{actor}:{t['task_id']}".encode()).hexdigest()[:10],
+            "view": t["view"],
+            "state": t["hidden"]["state"],
+            "task_id": t["task_id"],
+            "actor": actor,
+        }
+        for t in tasks
+    ]
+
+
+def keep_finished(records: Path) -> set[str]:
+    """Keep the finished tickets of an earlier sitting and drop any half-worked one, so a person can
+    stop and come back. Returns the task ids already finished."""
+    if not records.exists():
+        records.write_text("")
+        return set()
+    episodes = group_episodes(read_events(records)).values()
+    kept = [events for events in episodes if events[-1]["type"] == "episode_end"]
+    records.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for events in kept for e in events))
+    return {events[0]["task_id"] for events in kept}
 
 
 def make_server(webdesk, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
     """Serve any page object with .token, .page(), .status() and .post(path, form), local requests only.
     Optional .page_for(path) serves pages by path, and .after_post(path) says where a post returns to."""
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, body, ctype="text/html; charset=utf-8"):
             data = body.encode()

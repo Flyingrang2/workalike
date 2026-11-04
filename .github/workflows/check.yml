@@ -1,0 +1,25 @@
+# On every push: the tests, the public numbers recomputed from the raw results, and the frozen sheets against their hashes.
+# No GPU and no model calls.
+name: check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet pytest ruff
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: python -m pytest -q
+      - name: The README and the pages match the raw results
+        run: python scripts/check_numbers.py --check
+      - name: The frozen sheets have not changed
+        run: |
+          sha256sum -c baselines/results/test24/sheet.sha256
+          sha256sum -c baselines/results/test24b/sheet.sha256

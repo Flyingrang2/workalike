@@ -1,4 +1,5 @@
 """End-to-end checks on the Hypothesis 1 dataset (plan tests 1 to 8)."""
+
 import json
 import random
 import re
@@ -6,15 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from island import scripted
-from island.gen_h1 import build, load_episodes
-from island.report_dev import report
-from island.score import cost_before_first_reply, score, score_records
-from island.tasks import CATALOG, EVAL_ONLY_SKUS, POOLS, make_tasks
+from testbed import scripted
+from testbed.gen_h1 import build, load_episodes
+from testbed.report_dev import report
+from testbed.score import cost_before_first_reply, score, score_records
+from testbed.tasks import CATALOG, EVAL_ONLY_SKUS, POOLS, make_tasks
 from workalike import agent
 from workalike.desk import Desk
 from workalike.filter import clean_episode
-from workalike.record import Recorder, group_episodes, read_events
+from workalike.record import Recorder, read_events
 from workalike.serialize import SYSTEM_PROMPT, to_messages
 from workalike.sft import read_jsonl
 
@@ -78,8 +79,19 @@ def test_2_no_hidden_value_before_a_tool_shows_it(data):
 def test_2_no_labels_in_training_rows(data):
     out, manifest, _ = data
     # "unknown_sku" is also the desk's own error code, so the family names are checked through the key instead.
-    forbidden = [*manifest["actors"].values(), "stock_short", "approved_valid", "ack_already_sent", "approved_stale",
-                 '"family"', "grader", "hidden", "task_id", "eval_h1", "worker"]
+    forbidden = [
+        *manifest["actors"].values(),
+        "stock_short",
+        "approved_valid",
+        "ack_already_sent",
+        "approved_stale",
+        '"family"',
+        "grader",
+        "hidden",
+        "task_id",
+        "eval_h1",
+        "worker",
+    ]
     for name in ("a", "b", "mixed"):
         text = (out / "sft" / f"{name}-train.jsonl").read_text()
         for word in forbidden:
@@ -123,8 +135,9 @@ def test_4_both_ways_are_correct_and_traps_hold(data):
 
 def test_5_metric_ceiling_on_eval_h1(data):
     out, _, _ = data
-    counts = {style: sum(bool(cost_before_first_reply(ep)) for _, ep in episodes(out, style, "eval_h1"))
-              for style in "ab"}
+    counts = {
+        style: sum(bool(cost_before_first_reply(ep)) for _, ep in episodes(out, style, "eval_h1")) for style in "ab"
+    }
     assert counts == {"a": 30, "b": 0}
 
 
@@ -184,7 +197,13 @@ def test_8_format(data):
                 assert m["tool_call_id"] == pending.pop(0)
         assert not pending
         assert [t["function"]["name"] for t in row["tools"]] == [
-            "lookup_quote", "get_cost", "check_stock", "calc_price", "create_quote", "send_reply"]
+            "lookup_quote",
+            "get_cost",
+            "check_stock",
+            "calc_price",
+            "create_quote",
+            "send_reply",
+        ]
 
 
 def test_families_and_paired_tasks(data):

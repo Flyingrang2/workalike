@@ -16,6 +16,7 @@ by id in the message). An offered quote is checked against the customer's hidden
 the same way every time. In this test bed the owner approves replies at once, so the customer
 answers within the episode; in the assist window nothing reaches a customer before approval.
 """
+
 from __future__ import annotations
 
 import difflib
@@ -53,23 +54,34 @@ _QTY = {"type": "integer", "description": "Number of units."}
 _TICKET = {"type": "string"}
 
 TOOL_SPECS = [
-    _fn("lookup_quote",
+    _fn(
+        "lookup_quote",
         "Look up an earlier quote by id: its status, the date it is valid until, and its lines.",
-        {"quote_id": {"type": "string"}}, ["quote_id"]),
-    _fn("search_catalog",
+        {"quote_id": {"type": "string"}},
+        ["quote_id"],
+    ),
+    _fn(
+        "search_catalog",
         "Search the catalog by words in an item's name or code, e.g. 'jute' or 'tote'. Empty lists every item.",
-        {"query": {"type": "string"}}, ["query"]),
-    _fn("get_cost",
-        "Get the current unit cost of a catalog item.",
-        {"sku": _SKU}, ["sku"]),
-    _fn("check_stock",
+        {"query": {"type": "string"}},
+        ["query"],
+    ),
+    _fn("get_cost", "Get the current unit cost of a catalog item.", {"sku": _SKU}, ["sku"]),
+    _fn(
+        "check_stock",
         "Check stock for a quantity. When it is short, shows the restock date and quantity, and substitutes with stock.",
-        {"sku": _SKU, "qty": _QTY}, ["sku", "qty"]),
-    _fn("calc_price",
+        {"sku": _SKU, "qty": _QTY},
+        ["sku", "qty"],
+    ),
+    _fn(
+        "calc_price",
         "Price one quote line from its unit cost: the list price from the shop's markup and quantity breaks, "
         "and the floor price under which the shop cannot sell.",
-        {"sku": _SKU, "qty": _QTY, "unit_cost": {"type": "number"}}, ["sku", "qty", "unit_cost"]),
-    _fn("create_quote",
+        {"sku": _SKU, "qty": _QTY, "unit_cost": {"type": "number"}},
+        ["sku", "qty", "unit_cost"],
+    ),
+    _fn(
+        "create_quote",
         "Create a draft quote for a ticket. Each line has its own ship date. Rejects prices under the floor "
         "and dates the stock cannot meet; notes any price under list.",
         {
@@ -78,41 +90,58 @@ TOOL_SPECS = [
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "properties": {"sku": _SKU, "qty": _QTY, "unit_price": {"type": "number"},
-                                   "ship_by": {"type": "string", "description": "Ship date, YYYY-MM-DD."}},
+                    "properties": {
+                        "sku": _SKU,
+                        "qty": _QTY,
+                        "unit_price": {"type": "number"},
+                        "ship_by": {"type": "string", "description": "Ship date, YYYY-MM-DD."},
+                    },
                     "required": ["sku", "qty", "unit_price", "ship_by"],
                 },
             },
         },
-        ["ticket_id", "lines"]),
-    _fn("ask_owner",
+        ["ticket_id", "lines"],
+    ),
+    _fn(
+        "ask_owner",
         "Ask the shop owner a question about a ticket, e.g. about a discount. Internal; the customer does not see it.",
-        {"ticket_id": _TICKET, "question": {"type": "string"}}, ["ticket_id", "question"]),
-    _fn("send_reply",
+        {"ticket_id": _TICKET, "question": {"type": "string"}},
+        ["ticket_id", "question"],
+    ),
+    _fn(
+        "send_reply",
         "Send a reply to the customer on a ticket, optionally attaching a draft quote. Returns the customer's answer.",
         {
             "ticket_id": _TICKET,
             "message": {"type": "string"},
             "quote_id": {"type": "string", "description": "Draft quote to attach, if any."},
         },
-        ["ticket_id", "message"]),
+        ["ticket_id", "message"],
+    ),
 ]
 SPEC_BY_NAME = {s["function"]["name"]: s["function"] for s in TOOL_SPECS}
 
 
 def _unknown_sku(state, sku):
     names = difflib.get_close_matches(sku.upper(), list(state["catalog"]), n=3, cutoff=0.6)
-    return {"error": "unknown_sku", "sku": sku,
-            "similar": [{"sku": s, "name": state["catalog"][s]["name"], "on_hand": state["catalog"][s]["on_hand"]}
-                        for s in names]}
+    return {
+        "error": "unknown_sku",
+        "sku": sku,
+        "similar": [
+            {"sku": s, "name": state["catalog"][s]["name"], "on_hand": state["catalog"][s]["on_hand"]} for s in names
+        ],
+    }
 
 
 def search_catalog(state, query):
     """Items whose code or name holds every word of the query (a person asked for it, 10-29)."""
     words = [w for w in re.split(r"[\s,]+", query.lower()) if w]
     hits = sorted(s for s, it in state["catalog"].items() if all(w in f"{s} {it['name']}".lower() for w in words))
-    return {"query": query, "items": [{"sku": s, "name": state["catalog"][s]["name"]} for s in hits[:60]],
-            "more": max(0, len(hits) - 60)}
+    return {
+        "query": query,
+        "items": [{"sku": s, "name": state["catalog"][s]["name"]} for s in hits[:60]],
+        "more": max(0, len(hits) - 60),
+    }
 
 
 def check_stock(state, sku, qty):
@@ -126,7 +155,8 @@ def check_stock(state, sku, qty):
         result["restock_qty"] = item["restock_qty"] if item["restock_date"] else 0
         result["substitutes"] = [
             {"sku": s, "name": state["catalog"][s]["name"], "on_hand": state["catalog"][s]["on_hand"]}
-            for s in item["substitutes"] if s in state["catalog"] and state["catalog"][s]["on_hand"] > 0
+            for s in item["substitutes"]
+            if s in state["catalog"] and state["catalog"][s]["on_hand"] > 0
         ]
     return result
 
@@ -137,9 +167,15 @@ def calc_price(state, sku, qty, unit_cost):
     if qty <= 0 or unit_cost <= 0:
         return {"error": "invalid_value"}
     price = unit_price_for(unit_cost, qty)
-    return {"sku": sku, "qty": qty, "unit_cost": unit_cost, "unit_price": price,
-            "line_total": round(price * qty, 2), "margin_pct": round((price - unit_cost) / price * 100, 1),
-            "floor_unit_price": floor_price(unit_cost)}
+    return {
+        "sku": sku,
+        "qty": qty,
+        "unit_cost": unit_cost,
+        "unit_price": price,
+        "line_total": round(price * qty, 2),
+        "margin_pct": round((price - unit_cost) / price * 100, 1),
+        "floor_unit_price": floor_price(unit_cost),
+    }
 
 
 def list_price(state, sku: str, lines: list[dict]) -> float:
@@ -149,8 +185,11 @@ def list_price(state, sku: str, lines: list[dict]) -> float:
 
 def approved_price(state, sku: str, price: float) -> bool:
     """Is this the price of the item on an approved quote that is still valid?"""
-    return any(q["valid_until"] >= state["today"] and l["sku"] == sku and abs(l["unit_price"] - price) < 0.005
-               for q in state["quotes"].values() for l in q["lines"])
+    return any(
+        q["valid_until"] >= state["today"] and l["sku"] == sku and abs(l["unit_price"] - price) < 0.005
+        for q in state["quotes"].values()
+        for l in q["lines"]
+    )
 
 
 def within_authority(listed: float, price: float, authority: float) -> bool:
@@ -207,14 +246,24 @@ def create_quote(state, ticket_id, lines):
             return {"error": "too_many_lines_for_item", "sku": sku, "max": MAX_LINES_PER_ITEM}
         when = stock_problem(state["catalog"][sku], mine)
         if when:
-            return {"error": "stock_short_for_ship_date", "sku": sku, "ship_by": when,
-                    "available_by_then": available(state["catalog"][sku], when)}
+            return {
+                "error": "stock_short_for_ship_date",
+                "sku": sku,
+                "ship_by": when,
+                "available_by_then": available(state["catalog"][sku], when),
+            }
     allowed = state.get("authority", {}).get(ticket_id, 0.0)
     out, notices = [], []
     for line in lines:
-        item = state["catalog"][line["sku"]]
-        out.append({"sku": line["sku"], "qty": line["qty"], "unit_price": line["unit_price"],
-                    "ship_by": line["ship_by"], "line_total": round(line["unit_price"] * line["qty"], 2)})
+        out.append(
+            {
+                "sku": line["sku"],
+                "qty": line["qty"],
+                "unit_price": line["unit_price"],
+                "ship_by": line["ship_by"],
+                "line_total": round(line["unit_price"] * line["qty"], 2),
+            }
+        )
         listed = list_price(state, line["sku"], lines)
         if line["unit_price"] < listed - 1e-9 and not approved_price(state, line["sku"], line["unit_price"]):
             off = (listed - line["unit_price"]) / listed
@@ -224,12 +273,18 @@ def create_quote(state, ticket_id, lines):
                 why = "beyond your discount authority; the owner agreed."
             else:
                 why = "beyond your discount authority, owner approval needed."
-            notices.append(f"{line['sku']} at {line['unit_price']:.2f} is {off * 100:.1f}% under list "
-                           f"({listed:.2f}); " + why)
+            notices.append(
+                f"{line['sku']} at {line['unit_price']:.2f} is {off * 100:.1f}% under list ({listed:.2f}); " + why
+            )
     quote_id = f"Q-{ticket_id.split('-')[-1]}-{len(state['drafts']) + 1}"
     state["drafts"][quote_id] = {"ticket_id": ticket_id, "lines": out, "status": "draft"}
-    result = {"quote_id": quote_id, "ticket_id": ticket_id, "lines": out,
-              "total": round(sum(l["line_total"] for l in out), 2), "status": "draft"}
+    result = {
+        "quote_id": quote_id,
+        "ticket_id": ticket_id,
+        "lines": out,
+        "total": round(sum(l["line_total"] for l in out), 2),
+        "status": "draft",
+    }
     if notices:
         result["notices"] = notices
     return result
@@ -252,8 +307,10 @@ def offered_quotes(state, ticket_id, message, quote_id=None) -> list[str]:
     return [q for q in dict.fromkeys(ids) if q in state["drafts"] and state["drafts"][q]["ticket_id"] == ticket_id]
 
 
-PLAIN_CUSTOMER = {"wants": None, "says": {"answer": "Thanks, I'll look out for the quote.",
-                                           "decline": "That isn't what we asked for."}}
+PLAIN_CUSTOMER = {
+    "wants": None,
+    "says": {"answer": "Thanks, I'll look out for the quote.", "decline": "That isn't what we asked for."},
+}
 
 
 def customer_problem(state, ticket_id, lines) -> str | None:
@@ -299,8 +356,10 @@ def customer_answer(state, ticket_id, message, quote_id=None) -> dict:
             talk["pushed"] = True
             return {"customer_reply": says["push_back"]}
         talk["accepted"] = qid
-        return {"customer_reply": says.get("accept", "Thanks, please go ahead with {qid}.").format(qid=qid),
-                "customer_accepted": qid}
+        return {
+            "customer_reply": says.get("accept", "Thanks, please go ahead with {qid}.").format(qid=qid),
+            "customer_accepted": qid,
+        }
     return {"customer_reply": says["decline"]}
 
 
@@ -315,8 +374,12 @@ def send_reply(state, ticket_id, message, quote_id=None):
         if draft is None or draft["ticket_id"] != ticket_id:
             return {"error": "unknown_quote", "quote_id": quote_id}
     state["outbox"].append({"ticket_id": ticket_id, "message": message, "quote_id": quote_id})
-    return {"status": "sent", "ticket_id": ticket_id, "reply_no": len(state["outbox"]),
-            **customer_answer(state, ticket_id, message, quote_id)}
+    return {
+        "status": "sent",
+        "ticket_id": ticket_id,
+        "reply_no": len(state["outbox"]),
+        **customer_answer(state, ticket_id, message, quote_id),
+    }
 
 
 HANDLERS = {
@@ -332,24 +395,39 @@ HANDLERS = {
 
 
 def empty_state(today: str) -> dict:
-    return {"today": today, "tickets": [], "catalog": {}, "quotes": {}, "drafts": {}, "outbox": [],
-            "authority": {}, "owner": {}, "owner_asked": [], "customers": {}, "talk": {}}
+    return {
+        "today": today,
+        "tickets": [],
+        "catalog": {},
+        "quotes": {},
+        "drafts": {},
+        "outbox": [],
+        "authority": {},
+        "owner": {},
+        "owner_asked": [],
+        "customers": {},
+        "talk": {},
+    }
 
 
 def authority_text(pct: float) -> str:
     if pct <= 0:
         return "Your discount authority: none. Ask the owner before offering any price under list."
-    return (f"Your discount authority: up to {pct * 100:.0f}% under list on your own. "
-            "Beyond that, ask the owner. Never under the floor price.")
+    return (
+        f"Your discount authority: up to {pct * 100:.0f}% under list on your own. "
+        "Beyond that, ask the owner. Never under the floor price."
+    )
 
 
 def render_view(view: dict) -> str:
-    parts = [f"Today is {view['today']}.", f"Ticket {view['ticket_id']} from {view['from']}.",
-             authority_text(view.get("authority", 0.0)),
-             f"Sent to this customer so far: {view.get('sent_so_far') or 'nothing yet'}."]
+    parts = [
+        f"Today is {view['today']}.",
+        f"Ticket {view['ticket_id']} from {view['from']}.",
+        authority_text(view.get("authority", 0.0)),
+        f"Sent to this customer so far: {view.get('sent_so_far') or 'nothing yet'}.",
+    ]
     if view.get("thread"):
         lines = [f"- {m['date']}, {m['who']}: {m['text']}" for m in view["thread"]]
         parts.append("Earlier in this thread:\n" + "\n".join(lines))
     parts.append("New message:\n" + view["body"])
     return "\n\n".join(parts)
-

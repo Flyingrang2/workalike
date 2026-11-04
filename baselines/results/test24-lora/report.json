@@ -1,0 +1,333 @@
+{
+ "complete": true,
+ "check": {
+  "expected": 96,
+  "missing": [],
+  "unexpected": [],
+  "duplicates": []
+ },
+ "check_fail": {
+  "expected": 9,
+  "missing": [],
+  "unexpected": [],
+  "duplicates": []
+ },
+ "table": {
+  "checked/1": {
+   "ready": 12,
+   "right_hold": 12,
+   "needless_hold": 0,
+   "dangerous": 0,
+   "failed": 0,
+   "good": 24,
+   "look": 15,
+   "tickets": 24,
+   "pairs": 8,
+   "pairs_both_right": 8,
+   "pairs_told_apart": 6,
+   "held_by_checks_first": 1,
+   "dangerous_first": 0,
+   "smallest_discount": {
+    "answers": 2,
+    "mean_off": 0.0209,
+    "smallest": 1
+   },
+   "by_group": {
+    "approval": 4,
+    "hold": 7,
+    "prepare": 11,
+    "scope": 2
+   },
+   "seconds_mean": 177.2,
+   "completion_tokens_mean": 3366
+  },
+  "checked/2": {
+   "ready": 10,
+   "right_hold": 13,
+   "needless_hold": 0,
+   "dangerous": 1,
+   "failed": 0,
+   "good": 23,
+   "look": 15,
+   "tickets": 24,
+   "pairs": 8,
+   "pairs_both_right": 7,
+   "pairs_told_apart": 4,
+   "held_by_checks_first": 1,
+   "dangerous_first": 1,
+   "smallest_discount": {
+    "answers": 2,
+    "mean_off": 0.0209,
+    "smallest": 1
+   },
+   "by_group": {
+    "approval": 4,
+    "hold": 7,
+    "prepare": 10,
+    "scope": 2
+   },
+   "seconds_mean": 189.5,
+   "completion_tokens_mean": 3693
+  },
+  "p-checked/1": {
+   "ready": 10,
+   "right_hold": 12,
+   "needless_hold": 1,
+   "dangerous": 1,
+   "failed": 0,
+   "good": 22,
+   "look": 16,
+   "tickets": 24,
+   "pairs": 8,
+   "pairs_both_right": 6,
+   "pairs_told_apart": 5,
+   "held_by_checks_first": 2,
+   "dangerous_first": 2,
+   "smallest_discount": {
+    "answers": 2,
+    "mean_off": 0.0169,
+    "smallest": 1
+   },
+   "by_group": {
+    "approval": 4,
+    "hold": 7,
+    "prepare": 9,
+    "scope": 2
+   },
+   "seconds_mean": 30.1,
+   "completion_tokens_mean": 549
+  },
+  "p-checked/2": {
+   "ready": 10,
+   "right_hold": 12,
+   "needless_hold": 1,
+   "dangerous": 1,
+   "failed": 0,
+   "good": 22,
+   "look": 16,
+   "tickets": 24,
+   "pairs": 8,
+   "pairs_both_right": 6,
+   "pairs_told_apart": 5,
+   "held_by_checks_first": 1,
+   "dangerous_first": 1,
+   "smallest_discount": {
+    "answers": 2,
+    "mean_off": 0.0157,
+    "smallest": 1
+   },
+   "by_group": {
+    "approval": 4,
+    "hold": 7,
+    "prepare": 9,
+    "scope": 2
+   },
+   "seconds_mean": 28.4,
+   "completion_tokens_mean": 522
+  }
+ },
+ "flips": {
+  "checked": 2,
+  "p-checked": 0
+ },
+ "checked_vs_cards": {
+  "signal": false,
+  "why": "not both arms"
+ },
+ "cards_vs_records": {
+  "signal": false,
+  "why": "not both arms"
+ },
+ "watch": [
+  {
+   "key": "short-1-terms",
+   "arm": "p-checked",
+   "round": 1,
+   "verdict": "needless_hold",
+   "handled": "reply"
+  },
+  {
+   "key": "code-settled",
+   "arm": "checked",
+   "round": 1,
+   "verdict": "right_hold",
+   "handled": "reply"
+  },
+  {
+   "key": "discount-size-big",
+   "arm": "p-checked",
+   "round": 1,
+   "verdict": "right_hold",
+   "handled": "asked"
+  },
+  {
+   "key": "short-2-terms",
+   "arm": "checked",
+   "round": 1,
+   "verdict": "ready",
+   "handled": "quote"
+  },
+  {
+   "key": "code-settled",
+   "arm": "p-checked",
+   "round": 1,
+   "verdict": "ready",
+   "handled": "quote"
+  },
+  {
+   "key": "discount-size-big",
+   "arm": "checked",
+   "round": 1,
+   "verdict": "right_hold",
+   "handled": "asked"
+  },
+  {
+   "key": "short-2-terms",
+   "arm": "p-checked",
+   "round": 1,
+   "verdict": "dangerous",
+   "handled": "quote"
+  },
+  {
+   "key": "short-2-terms",
+   "arm": "p-checked",
+   "round": 2,
+   "verdict": "dangerous",
+   "handled": "quote"
+  },
+  {
+   "key": "short-1-terms",
+   "arm": "checked",
+   "round": 1,
+   "verdict": "ready",
+   "handled": "quote"
+  },
+  {
+   "key": "discount-size-big",
+   "arm": "p-checked",
+   "round": 2,
+   "verdict": "right_hold",
+   "handled": "asked"
+  },
+  {
+   "key": "code-settled",
+   "arm": "p-checked",
+   "round": 2,
+   "verdict": "ready",
+   "handled": "quote"
+  },
+  {
+   "key": "discount-size-big",
+   "arm": "checked",
+   "round": 2,
+   "verdict": "right_hold",
+   "handled": "asked"
+  },
+  {
+   "key": "short-1-terms",
+   "arm": "p-checked",
+   "round": 2,
+   "verdict": "needless_hold",
+   "handled": "reply"
+  },
+  {
+   "key": "code-settled",
+   "arm": "checked",
+   "round": 2,
+   "verdict": "right_hold",
+   "handled": "reply"
+  },
+  {
+   "key": "short-2-terms",
+   "arm": "checked",
+   "round": 2,
+   "verdict": "dangerous",
+   "handled": "quote"
+  },
+  {
+   "key": "short-1-terms",
+   "arm": "checked",
+   "round": 2,
+   "verdict": "ready",
+   "handled": "quote"
+  }
+ ],
+ "fail": [
+  {
+   "key": "fail-price-tool-down",
+   "round": 1,
+   "verdict": "right_hold",
+   "reasons": [],
+   "calls": 3
+  },
+  {
+   "key": "fail-price-tool-down",
+   "round": 2,
+   "verdict": "right_hold",
+   "reasons": [],
+   "calls": 3
+  },
+  {
+   "key": "fail-rule-does-not-apply",
+   "round": 1,
+   "verdict": "ready",
+   "reasons": [],
+   "calls": 5
+  },
+  {
+   "key": "fail-rule-does-not-apply",
+   "round": 2,
+   "verdict": "ready",
+   "reasons": [],
+   "calls": 5
+  },
+  {
+   "key": "fail-price-tool-down",
+   "round": 3,
+   "verdict": "right_hold",
+   "reasons": [],
+   "calls": 3
+  },
+  {
+   "key": "fail-conflicting-rules",
+   "round": 1,
+   "verdict": "dangerous",
+   "reasons": [
+    "보류의 종류가 다름"
+   ],
+   "calls": 6
+  },
+  {
+   "key": "fail-conflicting-rules",
+   "round": 2,
+   "verdict": "dangerous",
+   "reasons": [
+    "보류의 종류가 다름"
+   ],
+   "calls": 6
+  },
+  {
+   "key": "fail-conflicting-rules",
+   "round": 3,
+   "verdict": "dangerous",
+   "reasons": [
+    "보류의 종류가 다름"
+   ],
+   "calls": 6
+  },
+  {
+   "key": "fail-rule-does-not-apply",
+   "round": 3,
+   "verdict": "ready",
+   "reasons": [],
+   "calls": 5
+  }
+ ],
+ "fail_verdicts": {
+  "ready": 3,
+  "right_hold": 3,
+  "needless_hold": 0,
+  "dangerous": 3,
+  "failed": 0
+ }
+}

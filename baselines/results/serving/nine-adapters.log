@@ -1,0 +1,22 @@
+One server on one GPU, 2026-10-28. These adapters came from a run with a data bug, so this shows serving only.
+
+INFO 10-28 05:12:32 [serving.py:226] Loaded new LoRA adapter: name 'c20s1', path 'adapters/v2-c20-s1'
+INFO 10-28 05:12:33 [serving.py:226] Loaded new LoRA adapter: name 'c40s1', path 'adapters/v2-c40-s1'
+INFO 10-28 05:12:33 [serving.py:226] Loaded new LoRA adapter: name 'c60s1', path 'adapters/v2-c60-s1'
+INFO 10-28 05:12:33 [serving.py:226] Loaded new LoRA adapter: name 'c20s2', path 'adapters/v2-c20-s2'
+INFO 10-28 05:12:34 [serving.py:226] Loaded new LoRA adapter: name 'c40s2', path 'adapters/v2-c40-s2'
+INFO 10-28 05:12:34 [serving.py:226] Loaded new LoRA adapter: name 'c60s2', path 'adapters/v2-c60-s2'
+INFO 10-28 05:12:34 [serving.py:226] Loaded new LoRA adapter: name 'c20s3', path 'adapters/v2-c20-s3'
+INFO 10-28 05:12:34 [serving.py:226] Loaded new LoRA adapter: name 'c40s3', path 'adapters/v2-c40-s3'
+INFO 10-28 05:12:35 [serving.py:226] Loaded new LoRA adapter: name 'c60s3', path 'adapters/v2-c60-s3'
+
+Tickets each adapter worked on that server:
+c20s1: 12 tickets
+c20s2: 12 tickets
+c20s3: 12 tickets
+c40s1: 12 tickets
+c40s2: 12 tickets
+c40s3: 12 tickets
+c60s1: 12 tickets
+c60s2: 12 tickets
+c60s3: 12 tickets

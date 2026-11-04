@@ -1,0 +1,284 @@
+/* Layout: one column of paper. The memorable thing is the notebook that writes itself; everything around it stays quiet.
+   Pencil on paper with a single orange, chosen for the film and this page alike. One look in any theme, by choice. */
+:root {
+  --paper: #fbfaf4; --ink: #22211f; --pencil: #5e5b55; --rule: #dcd9cf; --orange: #ff6a13; --orange-ink: #b84300; --wash: #f4f1e6;
+  --hand: "Gochi Hand", "Segoe Print", "Bradley Hand", cursive;
+  --head: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --wobble: 120px 14px 110px 14px / 14px 90px 14px 100px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--body);
+       padding-block: 0 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+::selection { background: var(--orange); color: var(--paper); }
+a { color: var(--orange-ink); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+main { max-width: 1120px; margin-inline: auto; display: grid; gap: clamp(64px, 9vw, 112px); }
+h1, h2 { font-family: var(--head); font-weight: 600; letter-spacing: -0.025em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.6rem, 6.4vw, 4.75rem); line-height: 1.04; }
+h2 { font-size: clamp(2rem, 4.2vw, 3rem); line-height: 1.1; }
+p { margin: 0; }
+.prose { display: grid; gap: 16px; max-width: 64ch; }
+
+/* The first screen: the sentence and an empty desk with a phone nobody answers. */
+.hero { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 32px; align-items: end; padding-top: clamp(40px, 7vw, 88px); }
+.hero .lead { display: grid; gap: 22px; }
+.second { font-size: 1.2em; line-height: 1.5; max-width: 46ch; color: var(--pencil); }
+.hero-art { width: 100%; height: auto; display: block; }
+
+.film { display: grid; gap: 12px; margin-top: calc(clamp(64px, 9vw, 112px) * -0.45); }
+.film video, .film .frame { width: 100%; aspect-ratio: 16 / 9; display: block; background: var(--wash); object-fit: cover; }
+.film .frame { display: grid; place-items: center; text-align: center; padding: 24px; font: 400 1.6rem/1.3 var(--hand); color: var(--pencil); }
+.film figcaption { color: var(--pencil); font-size: 0.95em; }
+figure { margin: 0; }
+
+/* The try-it box. */
+.try-head { display: grid; gap: 12px; max-width: 64ch; margin-bottom: 28px; }
+.drawn { position: relative; }
+.drawn::before { content: ""; position: absolute; inset: 0; border: 2px solid var(--line, var(--ink)); border-radius: 6px; filter: url(#wobble); pointer-events: none; }
+.spread { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--paper); }
+.desk { padding: clamp(20px, 3vw, 36px); display: grid; gap: 16px; align-content: start; min-width: 0; min-height: 370px; }
+.turn { color: var(--pencil); }
+.mail { background: var(--wash); border-radius: 6px; padding: 16px 18px; display: grid; gap: 6px; }
+.from { font-weight: 600; font-size: 0.95em; }
+.body { white-space: pre-line; }
+.fact { font-size: 0.95em; color: var(--pencil); }
+.choices { display: grid; gap: 10px; justify-items: start; }
+button, .button { font: inherit; font-size: 1em; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: var(--wobble); padding: 9px 18px; cursor: pointer;
+  text-decoration: none; display: inline-block; transition: background-color .12s, color .12s, transform .12s; }
+button:hover:not(:disabled), .button:hover { background: var(--ink); color: var(--paper); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .55; cursor: default; }
+button.chosen { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
+/* The notebook. Its ruled lines sit under the handwriting; the type and the rules share one line height. */
+.note { --l: 2.05rem; padding: clamp(20px, 3vw, 36px); border-left: 2px dashed var(--rule); min-width: 0;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--l) - 1px), var(--rule) calc(var(--l) - 1px), var(--rule) var(--l));
+  background-position: 0 clamp(20px, 3vw, 36px); font: 400 1.4rem/var(--l) var(--hand); }
+.note h3 { font: inherit; font-size: 1.75rem; margin: 0 0 var(--l); color: var(--orange-ink); }
+.note .line { margin-bottom: var(--l); }
+.note .line:empty { display: none; }
+.note-empty { color: var(--pencil); }
+.pencil { display: inline-block; width: .55em; height: .16em; margin-left: .1em; background: var(--orange); vertical-align: .1em; border-radius: 2px; transform: rotate(-24deg); }
+
+/* The switch springs when it goes on: the one flourish on the page. */
+.switch { display: inline-flex; align-items: center; gap: 14px; padding: 8px 22px 8px 8px; font: 400 1.5rem/1.2 var(--hand); justify-self: start; border-radius: 999px; }
+.switch:hover:not(:disabled) { background: var(--wash); color: var(--ink); }
+.knob { width: 62px; height: 34px; border: 2px solid var(--ink); border-radius: 999px; position: relative; flex: none; transition: background-color .15s; }
+.knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); transition: transform .38s cubic-bezier(.3, 1.9, .5, 1); }
+.switch.on { opacity: 1; }
+.switch.on .knob { background: var(--orange); }
+.switch.on .knob::after { transform: translateX(28px); background: var(--paper); }
+
+#results:empty { display: none; }
+#results { display: grid; gap: 16px; margin-top: 24px; }
+.mode { color: var(--pencil); font-size: .95em; }
+.mode.recorded { color: var(--orange-ink); }
+.verdict { font: 400 clamp(1.5rem, 2.8vw, 2rem)/1.25 var(--hand); max-width: 44ch; min-height: 1.25em; }
+.arms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.arm { padding: 18px; display: grid; gap: 10px; min-width: 0; font-size: .95em; line-height: 1.5; }
+.arm h3 { margin: 0; font: 400 1.5rem/1.2 var(--hand); }
+.sub { color: var(--pencil); font-size: .92em; }
+.clock { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.steps { margin: 0; padding: 0 0 0 1.2em; display: grid; gap: 3px; font-size: .94em; }
+.steps li::marker { color: var(--pencil); }
+.was-held { color: var(--orange-ink); }
+.draft { margin: 0; padding: 12px 14px; background: var(--wash); border-radius: 6px; white-space: pre-line; overflow-wrap: anywhere; }
+.held { font-weight: 600; color: var(--orange-ink); }
+.blocked, .stopped { color: var(--orange-ink); }
+.lora { --line: var(--orange); }
+.lora .big { font: 400 2rem/1.1 var(--hand); color: var(--orange-ink); }
+.aside { color: var(--pencil); font-size: .92em; }
+.after { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.after details { flex-basis: 100%; }
+.after summary { cursor: pointer; color: var(--pencil); }
+pre { margin: 10px 0 0; padding: 14px; background: var(--wash); border-radius: 6px; overflow-x: auto; font: 400 .85rem/1.55 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+.try-foot { margin-top: 24px; color: var(--pencil); max-width: 70ch; }
+
+/* What we tested. */
+.steps-big { margin: 0; padding: 0 0 0 1.4em; display: grid; gap: 10px; max-width: 66ch; }
+.steps-big li::marker { font-family: var(--hand); color: var(--orange-ink); font-size: 1.2em; }
+.wins { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 40px; max-width: 980px; }
+.wins b { display: block; font: 600 1.2rem/1.3 var(--head); letter-spacing: -0.01em; margin-bottom: 4px; }
+.how { font: 400 1.5rem/1.2 var(--hand); margin: 8px 0 0; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 10px 14px; border-bottom: 1px solid var(--rule); font-weight: 400; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+thead th { font: 400 1.25rem/1.2 var(--hand); border-bottom: 2px solid var(--ink); vertical-align: bottom; }
+td.ours { color: var(--orange-ink); font-weight: 600; }
+caption { text-align: left; color: var(--pencil); padding-bottom: 10px; caption-side: top; }
+.section { display: grid; gap: 20px; }
+
+.get { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 32px; align-items: start; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; }
+.next-line { font: 400 clamp(1.8rem, 4vw, 2.75rem)/1.15 var(--hand); max-width: 26ch; text-wrap: balance; }
+footer { max-width: 1120px; margin: 72px auto 0; color: var(--pencil); font-size: .92em; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9em; }
+
+@media (max-width: 860px) {
+  .hero, .spread, .arms, .get, .wins { grid-template-columns: minmax(0, 1fr); }
+  .note { border-left: 0; border-top: 2px dashed var(--rule); }
+  .desk { min-height: 0; }
+  .hero-art { max-width: 360px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; animation: none !important; }
+}
+
+/* The first screen's ways in. */
+.links .first { background: var(--orange); border-color: var(--orange); color: var(--ink); }
+.links .first:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.today { color: var(--pencil); max-width: 52ch; font-size: .95em; }
+
+/* One rule's trip: three legs, with ours in the film's orange. */
+.trip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.leg { padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.leg h4 { margin: 0; font: 400 1.5rem/1.2 var(--hand); }
+.leg blockquote { margin: 0; padding: 10px 12px; background: var(--wash); border-radius: 6px; font-size: .97em; }
+.leg.ours { --line: var(--orange); }
+.leg .big { font: 400 2rem/1.1 var(--hand); color: var(--orange-ink); }
+
+/* The real screens. */
+.shots { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 24px; align-items: start; }
+.shots figure { display: grid; gap: 10px; }
+.shot { width: 100%; height: auto; display: block; border: 2px solid var(--ink); border-radius: 6px; }
+.shots figcaption { color: var(--pencil); font-size: .95em; }
+
+details.rules { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; }
+details.rules summary { cursor: pointer; font-weight: 600; }
+.rule { padding: 16px 0; border-top: 1px solid var(--rule); display: grid; gap: 6px; max-width: 76ch; }
+.rule:first-of-type { border-top: 0; margin-top: 8px; }
+.rule h4 { margin: 0; font: 600 1rem/1.4 var(--body); }
+.rule ul { margin: 2px 0 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.rule .q { color: var(--pencil); }
+.tag { color: var(--pencil); font-size: .92em; }
+
+/* What the model does: a real sequence, so it is numbered. */
+.meta-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 32px; align-items: center; }
+.jobs { margin: 0; padding: 0 0 0 1.5em; display: grid; gap: 14px; }
+.jobs li::marker { font: 400 1.4rem var(--hand); color: var(--orange-ink); }
+.art { width: 100%; height: auto; display: block; }
+.next-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 32px; align-items: center; }
+
+/* The table's own column, boxed in orange as in the film. */
+th.ours, td.ours { border-left: 2px solid var(--orange); border-right: 2px solid var(--orange); }
+thead th.ours { border-top: 2px solid var(--orange); border-bottom-color: var(--orange); }
+tbody tr:last-child td.ours { border-bottom: 2px solid var(--orange); }
+td a { color: inherit; text-decoration-color: var(--rule); }
+td a:hover { color: var(--orange-ink); text-decoration-color: currentColor; }
+tbody th[scope="row"] { font-weight: 400; max-width: 34ch; }
+
+@media (max-width: 860px) {
+  .trip, .shots, .meta-grid, .next-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The evidence page. */
+.ev-head { display: grid; gap: 16px; padding-top: 40px; }
+.ev-head h1 { font-size: clamp(2.4rem, 5.4vw, 4rem); }
+.claims th[scope="row"], .claims td { text-align: left; vertical-align: top; }
+.claims td { min-width: 180px; }
+.claims thead th { text-align: left; }
+.claims td:last-child { min-width: 320px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.picked { padding: 20px; display: grid; gap: 10px; min-width: 0; font-size: .95em; }
+.picked h3 { margin: 0; font: 400 1.6rem/1.2 var(--hand); color: var(--orange-ink); }
+.picked h4 { margin: 4px 0 0; font: 600 1em/1.4 var(--body); }
+.draft.struck { color: var(--pencil); border-left: 3px solid var(--orange); }
+.tools { font-size: .92em; overflow-wrap: anywhere; }
+.thread { font-size: .92em; margin-top: 6px; }
+.checks { margin: 0; padding-left: 1.2em; font-size: .92em; }
+.changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; max-width: 980px; }
+.changes h3 { margin: 0 0 6px; font: 600 1.2rem/1.3 var(--head); letter-spacing: -0.01em; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 18px; }
+.filters label { display: grid; gap: 4px; font-size: .92em; color: var(--pencil); min-width: 0; }
+select { font: inherit; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 6px; padding: 6px 8px; width: 100%; min-width: 0; }
+.count { color: var(--pencil); }
+.run { border-top: 1px solid var(--rule); }
+.run:last-child { border-bottom: 1px solid var(--rule); }
+.run summary { cursor: pointer; padding: 10px 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: baseline; }
+.run.bad .run-verdict { color: var(--orange-ink); font-weight: 600; }
+.run-arm, .run-time { color: var(--pencil); font-size: .95em; }
+.run-body { padding: 8px 0 20px; display: grid; gap: 10px; max-width: 80ch; }
+@media (max-width: 860px) {
+  .three, .changes { grid-template-columns: minmax(0, 1fr); }
+  .run summary { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* Works today and not yet: two plain lists side by side. */
+.person { font-size: 1.05em; max-width: 52ch; }
+.status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); padding: 24px 0; }
+.status ul { margin: 8px 0 0; padding-left: 1.1em; display: grid; gap: 8px; }
+@media (max-width: 860px) { .status { grid-template-columns: minmax(0, 1fr); } }
+
+/* After the design read: the notebook's rules, phones, the run list, focus, grouping. */
+.note { background-position: 0 calc(clamp(20px, 3vw, 36px) - 9px); }
+table:not(.claims) td a { display: block; margin: -10px -14px; padding: 10px 14px; }
+main, .section, .ev-head { grid-template-columns: minmax(0, 1fr); }
+.claims { table-layout: fixed; }
+.claims thead th:nth-child(1) { width: 46%; }
+.claims tbody th[scope="row"] { font-weight: 600; max-width: none; }
+.claims td, .claims td:last-child { min-width: 0; }
+.shots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.shots a { cursor: zoom-in; }
+.run summary { list-style: none; position: relative; margin-inline: -10px; padding: 10px 34px 10px 10px; border-radius: 4px; transition: background-color .12s; }
+.run summary::-webkit-details-marker { display: none; }
+.run summary::after { content: ""; position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; border-right: 2px solid var(--pencil); border-bottom: 2px solid var(--pencil); transform: translateY(-70%) rotate(45deg); transition: transform .12s; }
+.run[open] summary::after { transform: translateY(-30%) rotate(225deg); }
+.run summary:hover { background: var(--wash); }
+.run-head { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 6fr) minmax(0, 3fr) minmax(0, 2fr); gap: 12px; padding: 0 24px 8px 0; font: 400 1.25rem/1.2 var(--hand); border-bottom: 2px solid var(--ink); }
+.run:first-child { border-top: 0; }
+:focus-visible { outline-color: var(--orange-ink); }
+::selection { color: var(--ink); }
+td a { text-decoration-color: var(--orange-ink); text-decoration-thickness: 1px; }
+select { min-height: 44px; }
+summary { min-height: 44px; padding-block: 8.5px; }
+details.rules { padding: 6px 0; }
+.ev-head > p:first-child a { display: inline-block; padding-block: 8px; }
+.try-head { gap: 20px; }
+.section > .how { margin-top: 20px; }
+.section > .shots { margin-top: 36px; }
+.section > details.rules { margin-top: 16px; }
+.section > details.rules + details.rules { margin-top: -20px; border-top: 0; }
+.section > .meta-grid + .prose { margin-top: 16px; }
+.section > .wins + .table-wrap { margin-top: 36px; }
+.section > .table-wrap + .prose { margin-top: 12px; }
+.wins, .changes { max-width: none; column-gap: 48px; }
+.try-foot { max-width: 64ch; font-size: .95em; }
+.trip { gap: 28px; }
+.leg:has(> blockquote) { grid-template-rows: auto 1fr auto; align-content: stretch; }
+.leg + .leg::after { content: ""; position: absolute; left: -29px; top: 31px; width: 30px; height: 12px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 12'%3E%3Cpath d='M1 7c5-3 10 2 16-1 3-1 6-1 11 0M23 2l5 4-6 4' fill='none' stroke='%23ff6a13' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+p, li, figcaption, blockquote, caption { text-wrap: pretty; }
+thead th { text-wrap: balance; }
+h1, h2 { letter-spacing: -0.018em; }
+.person { color: var(--pencil); }
+.next-line { max-width: none; margin-top: 44px; }
+.get-side { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.get-side pre { margin: 0; }
+.arms, .three { align-items: stretch; }
+.arm, .picked { align-content: start; }
+@media (min-width: 1100px) { .hero-art { width: calc(100% + 96px); max-width: none; margin-left: -96px; } }
+@media (max-width: 860px) {
+  table:not(.claims) { min-width: 0; font-size: .92em; }
+  table:not(.claims) th, table:not(.claims) td { padding: 10px 6px; }
+  table:not(.claims) th:first-child, table:not(.claims) td:first-child { padding-left: 0; width: 36%; }
+  table:not(.claims) thead th { font-size: 1.05rem; }
+  table:not(.claims) td a { margin: -10px -6px; padding: 10px 6px; }
+  .claims, .claims tbody, .claims tr, .claims tbody th[scope="row"], .claims td { display: block; width: auto; min-width: 0; padding-inline: 0; }
+  .claims thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .claims tr { padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .claims tbody th[scope="row"], .claims td { border: 0; padding-block: 2px; }
+  pre { white-space: pre; }
+  .shots { grid-template-columns: minmax(0, 1fr); }
+  .leg + .leg::after { left: 24px; top: -21px; transform: rotate(90deg); }
+  .run-head { display: none; }
+  .run summary { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
+  .run-arm { grid-area: 1 / 1; }
+  .run-time { grid-area: 1 / 2; }
+  .run-label, .run-verdict { grid-column: 1 / -1; }
+}
+
+.teacher { font: 400 1.5rem/1.2 var(--hand); }
+details.rules .prose { padding-block: 10px 6px; }

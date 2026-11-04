@@ -5,6 +5,7 @@ functions, so the model is trained on exactly the prompts it will later see.
 Tool-call arguments stay dicts because the Glimmer chat template requires a
 mapping; to_wire() converts them to JSON strings for OpenAI-compatible servers.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,13 +55,18 @@ def turn_messages(calls: list[dict], specs: dict | None = None) -> list[dict]:
         "role": "assistant",
         "content": "",
         "tool_calls": [
-            {"id": c["id"], "type": "function",
-             "function": {"name": c["name"], "arguments": order_args(c["name"], c["args"], specs)}}
+            {
+                "id": c["id"],
+                "type": "function",
+                "function": {"name": c["name"], "arguments": order_args(c["name"], c["args"], specs)},
+            }
             for c in calls
         ],
     }
-    tools = [{"role": "tool", "tool_call_id": c["id"], "name": c["name"], "content": canonical_json(c["result"])}
-             for c in calls]
+    tools = [
+        {"role": "tool", "tool_call_id": c["id"], "name": c["name"], "content": canonical_json(c["result"])}
+        for c in calls
+    ]
     return [assistant, *tools]
 
 
@@ -86,8 +92,19 @@ def to_wire(messages: list[dict]) -> list[dict]:
     out = []
     for m in messages:
         if m.get("tool_calls"):
-            m = {**m, "content": None, "tool_calls": [
-                {**tc, "function": {**tc["function"], "arguments": json.dumps(tc["function"]["arguments"], ensure_ascii=False)}}
-                for tc in m["tool_calls"]]}
+            m = {
+                **m,
+                "content": None,
+                "tool_calls": [
+                    {
+                        **tc,
+                        "function": {
+                            **tc["function"],
+                            "arguments": json.dumps(tc["function"]["arguments"], ensure_ascii=False),
+                        },
+                    }
+                    for tc in m["tool_calls"]
+                ],
+            }
         out.append(m)
     return out

@@ -17,6 +17,7 @@ serving run on a GPU box:
 list prints each version and, for those with an adapter, the --lora-modules entry for vLLM,
 so the assist window can draft with any version by its name.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -68,11 +69,18 @@ def build(records, versions, actor: str | None = None, name: str | None = None, 
     n = 1 + max((int(p.name[1:]) for p in versions.glob("v*") if p.name[1:].isdigit()), default=0)
     out = versions / f"v{n}"
     write_jsonl([sft_row(e["clean"], env) for e in kept], out / "sft" / f"{name}-train.jsonl")
-    manifest = {"version": f"v{n}", "name": f"{name}-v{n}", "created": wall_clock(), "actor": actor,
-                "records": str(records), "records_sha256": hashlib.sha256(Path(records).read_bytes()).hexdigest(),
-                "rows": len(kept), "episodes": [e["ep"] for e in kept],
-                "left_out": sorted(e["ep"] for e in eps if e["ep"] in excluded),
-                "unfinished": sorted(e["ep"] for e in eps if e["status"] != "done")}
+    manifest = {
+        "version": f"v{n}",
+        "name": f"{name}-v{n}",
+        "created": wall_clock(),
+        "actor": actor,
+        "records": str(records),
+        "records_sha256": hashlib.sha256(Path(records).read_bytes()).hexdigest(),
+        "rows": len(kept),
+        "episodes": [e["ep"] for e in kept],
+        "left_out": sorted(e["ep"] for e in eps if e["ep"] in excluded),
+        "unfinished": sorted(e["ep"] for e in eps if e["status"] != "done"),
+    }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
     return manifest
 
@@ -82,8 +90,12 @@ def list_versions(versions) -> list[dict]:
     for path in sorted(Path(versions).glob("v*/manifest.json"), key=lambda p: int(p.parent.name[1:])):
         m = json.loads(path.read_text())
         adapter = path.parent / "adapter"
-        out.append({**{k: m[k] for k in ("version", "name", "created", "rows")},
-                    "adapter": str(adapter) if (adapter / "adapter_config.json").exists() else None})
+        out.append(
+            {
+                **{k: m[k] for k in ("version", "name", "created", "rows")},
+                "adapter": str(adapter) if (adapter / "adapter_config.json").exists() else None,
+            }
+        )
     return out
 
 
@@ -104,7 +116,7 @@ class Review:
     def post(self, path: str, form: dict[str, str]) -> None:
         if path == "/save":
             with self.lock:
-                save_excluded(self.versions, [k[len("out:"):] for k in form if k.startswith("out:")])
+                save_excluded(self.versions, [k[len("out:") :] for k in form if k.startswith("out:")])
 
     def status(self) -> dict:
         return {"excluded": sorted(load_excluded(self.versions)), "versions": list_versions(self.versions)}
@@ -115,24 +127,34 @@ class Review:
         cards = []
         for ep in episodes(self.records, self.actor):
             c = ep["clean"]
-            steps = "".join(f"<p>{i}. {e(_step(call))}</p>"
-                            for i, call in enumerate((x for t in c["turns"] for x in t["calls"]), 1))
+            steps = "".join(
+                f"<p>{i}. {e(_step(call))}</p>" for i, call in enumerate((x for t in c["turns"] for x in t["calls"]), 1)
+            )
             done = ep["status"] == "done"
-            box = (f"<label><input type='checkbox' name='out:{e(ep['ep'])}' style='width:auto'"
-                   f"{' checked' if ep['ep'] in excluded else ''}> Leave out</label>" if done
-                   else "<small>Unfinished, always left out</small>")
-            cards.append(f"<div class='card'><h2>{e(c['view'].get('ticket_id', ''))} {box}</h2>"
-                         f"<div class='req'>{e(render_view(c['view']))}</div>{steps or '<p>No actions.</p>'}</div>")
-        versions = "".join(f"<p>{e(v['name'])}: {v['rows']} episodes, {e(v['created'])}"
-                           f"{', adapter ready' if v['adapter'] else ''}</p>" for v in list_versions(self.versions))
-        return (f"<!doctype html><html><head><meta charset='utf-8'><title>Review</title><style>{CSS}"
-                "main{display:block;height:auto}.card{margin-bottom:12px}.req{white-space:pre-wrap;margin:6px 0}"
-                ".card p{margin:2px 0}</style></head><body><form method='post' action='/save'>"
-                f"<input type='hidden' name='csrf' value='{self.token}'><header><b>Review</b>"
-                "<span>What training will see: only what was on screen and what was done.</span>"
-                "<button class='finish'>Save</button></header><main>"
-                f"<div class='card'><h2>Versions</h2>{versions or '<p>None yet.</p>'}</div>{''.join(cards)}"
-                "</main></form></body></html>")
+            box = (
+                f"<label><input type='checkbox' name='out:{e(ep['ep'])}' style='width:auto'"
+                f"{' checked' if ep['ep'] in excluded else ''}> Leave out</label>"
+                if done
+                else "<small>Unfinished, always left out</small>"
+            )
+            cards.append(
+                f"<div class='card'><h2>{e(c['view'].get('ticket_id', ''))} {box}</h2>"
+                f"<div class='req'>{e(render_view(c['view']))}</div>{steps or '<p>No actions.</p>'}</div>"
+            )
+        versions = "".join(
+            f"<p>{e(v['name'])}: {v['rows']} episodes, {e(v['created'])}{', adapter ready' if v['adapter'] else ''}</p>"
+            for v in list_versions(self.versions)
+        )
+        return (
+            f"<!doctype html><html><head><meta charset='utf-8'><title>Review</title><style>{CSS}"
+            "main{display:block;height:auto}.card{margin-bottom:12px}.req{white-space:pre-wrap;margin:6px 0}"
+            ".card p{margin:2px 0}</style></head><body><form method='post' action='/save'>"
+            f"<input type='hidden' name='csrf' value='{self.token}'><header><b>Review</b>"
+            "<span>What training will see: only what was on screen and what was done.</span>"
+            "<button class='finish'>Save</button></header><main>"
+            f"<div class='card'><h2>Versions</h2>{versions or '<p>None yet.</p>'}</div>{''.join(cards)}"
+            "</main></form></body></html>"
+        )
 
 
 def main() -> None:

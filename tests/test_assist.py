@@ -1,4 +1,5 @@
 """The assist window: a request becomes drafts, the checks read them, and nothing is sent before approval."""
+
 import json
 import re
 import urllib.error
@@ -8,9 +9,9 @@ from datetime import date, timedelta
 
 import pytest
 
-from island.shop import shop_from
-from island.tasks import make_tasks
-from workalike.assist import Assist, check
+from testbed.assist import Assist, check
+from testbed.shop import shop_from
+from testbed.tasks import make_tasks
 from workalike.record import group_episodes, read_events
 from workalike.web import serve_in_background
 
@@ -31,6 +32,7 @@ def call(name, **args):
 
 def quoting_model(sku, ship, reply):
     """A stand-in for the served model: looks up, prices and quotes one line, then replies with reply(quote)."""
+
     def model(messages, tools):
         results = [json.loads(m["content"]) for m in messages if m["role"] == "tool"]
         ticket = re.search(r"Ticket (T-\d+)", messages[1]["content"]).group(1)
@@ -46,6 +48,7 @@ def quoting_model(sku, ship, reply):
             q = results[-1]
             return {"tool_calls": [call("send_reply", ticket_id=ticket, message=reply(q), quote_id=q["quote_id"])]}
         return {"content": "Done."}
+
     return model
 
 
@@ -79,8 +82,10 @@ def test_request_becomes_a_draft_and_is_sent_only_after_approval(tmp_path, shop)
 
 def test_checks_flag_amounts_and_quote_ids_the_desk_never_gave(tmp_path, shop):
     state, sku, ship = shop
+
     def invented(q):
         return f"Quote {q['quote_id']} comes to $1.00, and Q-9999-1 still stands."
+
     app = Assist(state, {"fake": quoting_model(sku, ship, invented)}, tmp_path)
     job = app.ask("Ana", "Quote please.")
     app.todo.join()
@@ -93,9 +98,15 @@ def test_a_price_without_a_quote_or_a_cost_in_the_reply_fails(shop):
     state, sku, ship = shop
     cost = state["catalog"][sku]["unit_cost"]
     history = [{"id": "c1", "name": "get_cost", "args": {"sku": sku}, "result": {"sku": sku, "unit_cost": cost}}]
-    state = {**state, "tickets": ["T-1001"], "drafts": {}, "outbox": [
-        {"ticket_id": "T-1001", "message": "Thanks, we'll check and come back to you.", "quote_id": None},
-        {"ticket_id": "T-1001", "message": f"Option 1 is 40 dollars; our cost is ${cost:.2f}.", "quote_id": None}]}
+    state = {
+        **state,
+        "tickets": ["T-1001"],
+        "drafts": {},
+        "outbox": [
+            {"ticket_id": "T-1001", "message": "Thanks, we'll check and come back to you.", "quote_id": None},
+            {"ticket_id": "T-1001", "message": f"Option 1 is 40 dollars; our cost is ${cost:.2f}.", "quote_id": None},
+        ],
+    }
     failed = {c["name"]: c["detail"] for c in check(state, "T-1001", history, "done") if not c["ok"]}
     assert failed.keys() == {"prices go out on a quote", "costs stay inside", "amounts come from the desk"}
     assert failed["prices go out on a quote"].startswith("1 reply")
@@ -105,10 +116,18 @@ def test_a_price_without_a_quote_or_a_cost_in_the_reply_fails(shop):
 def test_quote_check_reads_the_current_cost_and_stock(shop):
     state, sku, ship = shop
     item = state["catalog"][sku]
-    state = {**state, "tickets": ["T-1001"], "drafts": {
-        "Q-1001-1": {"ticket_id": "T-1001", "ship_by": ship,
-                     "lines": [{"sku": sku, "qty": item["on_hand"] + 1, "unit_price": item["unit_cost"]}]}},
-             "outbox": [{"ticket_id": "T-1001", "message": "See the quote.", "quote_id": "Q-1001-1"}]}
+    state = {
+        **state,
+        "tickets": ["T-1001"],
+        "drafts": {
+            "Q-1001-1": {
+                "ticket_id": "T-1001",
+                "ship_by": ship,
+                "lines": [{"sku": sku, "qty": item["on_hand"] + 1, "unit_price": item["unit_cost"]}],
+            }
+        },
+        "outbox": [{"ticket_id": "T-1001", "message": "See the quote.", "quote_id": "Q-1001-1"}],
+    }
     (quote,) = [c for c in check(state, "T-1001", [], "done") if c["name"].startswith("quote Q-")]
     assert not quote["ok"] and "margin floor" in quote["detail"]
     if item["restock_date"] is None or ship < item["restock_date"]:
@@ -117,8 +136,10 @@ def test_quote_check_reads_the_current_cost_and_stock(shop):
 
 def test_no_reply_or_a_model_error_cannot_be_approved(tmp_path, shop):
     state, _, _ = shop
+
     def broken(messages, tools):
         raise ConnectionError("server down")
+
     for model in (lambda m, t: {"content": "Done."}, broken):
         app = Assist(state, {"fake": model}, tmp_path)
         job = app.ask("Ana", "Quote please.")
@@ -147,21 +168,30 @@ def test_web_window_needs_the_page_token(tmp_path, shop):
         app.todo.join()
         assert "Draft reply" in post(url + "/approve", {"job": "1", "csrf": app.token})
         status = json.loads(urllib.request.urlopen(url + "/status").read())
-        assert status["jobs"] == [{"id": 1, "model": "fake", "ticket_id": "T-1001", "status": "approved", "checks_ok": True}]
+        assert status["jobs"] == [
+            {"id": 1, "model": "fake", "ticket_id": "T-1001", "status": "approved", "checks_ok": True}
+        ]
     finally:
         server.shutdown()
 
 
 def test_every_model_drafts_the_same_request_for_comparison(tmp_path, shop):
     state, sku, ship = shop
+
     def other(q):
         return f"Thanks Ana, quote {q['quote_id']} is attached."
-    app = Assist(state, {"first": quoting_model(sku, ship, honest), "second": quoting_model(sku, ship, other)}, tmp_path)
+
+    app = Assist(
+        state, {"first": quoting_model(sku, ship, honest), "second": quoting_model(sku, ship, other)}, tmp_path
+    )
     assert "every model (compare)" in app.page()
     app.post("/ask", {"from": "Ana", "body": f"Please quote {QTY} of {sku}.", "model": "*"})
     app.post("/ask", {"from": "Ana", "body": "Again, please.", "model": "second"})
     app.todo.join()
-    assert [(j["model"], j["view"]["body"][:6]) for j in app.jobs] == [("first", "Please"), ("second", "Please"),
-                                                                      ("second", "Again,")]
+    assert [(j["model"], j["view"]["body"][:6]) for j in app.jobs] == [
+        ("first", "Please"),
+        ("second", "Please"),
+        ("second", "Again,"),
+    ]
     assert app.jobs[0]["replies"][0]["message"] != app.jobs[1]["replies"][0]["message"]
     assert "drafted by second" in app.page()

@@ -6,6 +6,7 @@ Every event carries a visibility mark:
   meta     bookkeeping (who, which task, which seed); never reach the model
 Each line is written and flushed on its own, so a crash loses at most one event.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,8 +47,16 @@ class Recorder:
             f.write(json.dumps(event, ensure_ascii=False) + "\n")
             f.flush()
 
-    def start(self, episode: str, view: dict, task_id: str | None = None, actor: str | None = None, seed=None,
-              env: str = ENV_VERSION, **meta):
+    def start(
+        self,
+        episode: str,
+        view: dict,
+        task_id: str | None = None,
+        actor: str | None = None,
+        seed=None,
+        env: str = ENV_VERSION,
+        **meta,
+    ):
         self.episode, self.seq = episode, 0
         self._write("episode_start", "meta", task_id=task_id, actor=actor, env=env, seed=seed, **meta)
         self._write("observation", "seen", view=view)

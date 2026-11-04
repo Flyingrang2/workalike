@@ -1,0 +1,148 @@
+{
+ "version": "v1",
+ "name": "lap-v1",
+ "created": "2026-11-03T07:20:15",
+ "actor": null,
+ "records": "data/v2/records/c-train.jsonl",
+ "records_sha256": "9da5716ecc87514ecdc79387780317a5f8e34ca2ea06e6817822533850768f1f",
+ "rows": 154,
+ "episodes": [
+  "e-2d7c20375a",
+  "e-126c19fe10",
+  "e-7754743fa5",
+  "e-a984f60e2b",
+  "e-2d51c930c3",
+  "e-04fd198dfd",
+  "e-848df6729d",
+  "e-0ca44b3602",
+  "e-908dd0eae9",
+  "e-50bec8bcaf",
+  "e-f03c3b8244",
+  "e-66e88f328c",
+  "e-0103d15e63",
+  "e-d1a2afdc20",
+  "e-acf41911c8",
+  "e-77eaabc1e9",
+  "e-0ccdd89bae",
+  "e-fd05dd240a",
+  "e-ef57420161",
+  "e-ac089123b3",
+  "e-64d265055f",
+  "e-ce48ea9ac8",
+  "e-d2304e8f9b",
+  "e-87155d46c6",
+  "e-5b566f9ea2",
+  "e-003faf5a41",
+  "e-31e125ede7",
+  "e-4415a30b0a",
+  "e-3adaeb0d0f",
+  "e-b031f024ac",
+  "e-ba86e373f2",
+  "e-76f889e20d",
+  "e-82ae38dc5a",
+  "e-d469cf5dbe",
+  "e-45d9888949",
+  "e-e4567ddd5f",
+  "e-9e694d0550",
+  "e-50454317cf",
+  "e-6c8ead51b2",
+  "e-ac81637ace",
+  "e-98dfeea2ca",
+  "e-e0fe470b1c",
+  "e-d2a175cd5c",
+  "e-3290ff88d7",
+  "e-66dd5c7d06",
+  "e-065079b292",
+  "e-d071b8c818",
+  "e-79a9f89573",
+  "e-be0fcfe71b",
+  "e-b06f95d38c",
+  "e-a7b35b9ad8",
+  "e-e428cac7ca",
+  "e-62fcd18d45",
+  "e-4f7a9034b5",
+  "e-6dbd9570b6",
+  "e-6e84e52671",
+  "e-590a2b642c",
+  "e-87a906ab1b",
+  "e-1dc47a7b50",
+  "e-0d3a503796"
+ ],
+ "left_out": [],
+ "unfinished": [],
+ "unique_rows": 60,
+ "groups": {
+  "check_stock>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 15,
+   "copies": 1
+  },
+  "check_stock>send_reply>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 9,
+   "copies": 2
+  },
+  "check_stock>get_cost>calc_price>get_cost>calc_price>create_quote>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 5,
+   "copies": 3
+  },
+  "lookup_quote>check_stock>create_quote>send_reply": {
+   "seen": 5,
+   "copies": 2
+  },
+  "check_stock>get_cost>calc_price>send_reply>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 4,
+   "copies": 3
+  },
+  "lookup_quote>check_stock>get_cost>calc_price>create_quote>send_reply>create_quote>send_reply": {
+   "seen": 4,
+   "copies": 3
+  },
+  "check_stock>get_cost>calc_price>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 3,
+   "copies": 4
+  },
+  "lookup_quote>check_stock>get_cost>calc_price>create_quote>send_reply>ask_owner>create_quote>send_reply": {
+   "seen": 3,
+   "copies": 4
+  },
+  "check_stock>send_reply>get_cost>calc_price>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 3,
+   "copies": 4
+  },
+  "lookup_quote>check_stock>get_cost>calc_price>create_quote>send_reply>ask_owner>send_reply": {
+   "seen": 2,
+   "copies": 4
+  },
+  "check_stock>send_reply": {
+   "seen": 2,
+   "copies": 4
+  },
+  "check_stock>get_cost>calc_price>ask_owner>send_reply>create_quote>send_reply": {
+   "seen": 2,
+   "copies": 4
+  },
+  "check_stock>get_cost>calc_price>send_reply>create_quote>send_reply": {
+   "seen": 1,
+   "copies": 4
+  },
+  "check_stock>get_cost>calc_price>send_reply>get_cost>calc_price>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 1,
+   "copies": 4
+  },
+  "check_stock>get_cost>calc_price>ask_owner>send_reply>get_cost>calc_price>create_quote>send_reply": {
+   "seen": 1,
+   "copies": 4
+  }
+ },
+ "train_seconds": 2613,
+ "check": {
+  "ready": 1,
+  "right_hold": 2,
+  "needless_hold": 0,
+  "dangerous": 1,
+  "failed": 0,
+  "good": 3,
+  "look": 2,
+  "tickets": 4
+ },
+ "activated": false
+}

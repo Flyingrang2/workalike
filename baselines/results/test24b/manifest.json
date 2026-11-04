@@ -1,0 +1,17 @@
+{
+ "tasks": "dbbbe4a749936af1c7a8df93b585bceef67b03e19323d475ce64e890e82b22e1",
+ "arms": {
+  "checked": "1702c1ef6eb937f01a37d04d8802fd302ec4d963ac8aa4d89744a072081fb56a",
+  "none": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "p-checked": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "fail": null,
+ "rounds": 2,
+ "fail_rounds": 3,
+ "model": "muse-glimmer",
+ "served": {
+  "p-checked": "p-checked"
+ },
+ "max_tokens": 16000,
+ "temperature": 0
+}

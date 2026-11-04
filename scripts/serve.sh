@@ -13,6 +13,8 @@ CU=$(ls -d "$PWD"/.venv-serve/lib/python3*/site-packages/nvidia/cu1* 2>/dev/null
 [ -x "$CU/bin/nvcc" ] && export CUDA_HOME="$CU" PATH="$CU/bin:$PATH"
 # FlashInfer's sampler is the first kernel that needs JIT; greedy decoding does not need it.
 export VLLM_USE_FLASHINFER_SAMPLER=${VLLM_USE_FLASHINFER_SAMPLER:-0}
+# The model answers only on this machine and reports nothing home. Reach it from elsewhere through an ssh tunnel.
+export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
 
 LORA=()
 if [ -n "$ADAPTERS" ]; then
@@ -21,7 +23,7 @@ if [ -n "$ADAPTERS" ]; then
     LORA=(--enable-lora --max-lora-rank "${MAX_LORA_RANK:-16}" --max-loras "${MAX_LORAS:-$(wc -w <<< "$ADAPTERS")}"
           --max-cpu-loras "$(wc -w <<< "$ADAPTERS")" --lora-modules $ADAPTERS)
 fi
-exec ${HOURS:+timeout "${HOURS}h"} .venv-serve/bin/vllm serve "$M" --served-model-name muse-glimmer \
+exec ${HOURS:+timeout "${HOURS}h"} .venv-serve/bin/vllm serve "$M" --host 127.0.0.1 --served-model-name muse-glimmer \
     --max-model-len "$MAX_LEN" --max-num-seqs 8 ${QUANT:+--quantization "$QUANT"} --gpu-memory-utilization 0.92 \
     --enable-auto-tool-choice --tool-call-parser muse_glimmer --reasoning-parser muse_glimmer \
     "${LORA[@]}" > "$LOG" 2>&1

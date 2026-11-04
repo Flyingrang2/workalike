@@ -8,6 +8,7 @@ tools called, nothing about the content), and repeats the rarer groups, at most 
 about `target` rows. It reads no rule, no label and no ticket family. It can only weigh what was seen: an exception the
 records never show cannot be learned this way, and the repeated rows are not new observations (the manifest counts both).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,9 @@ from .sft import read_jsonl, write_jsonl
 
 def signature(row: dict) -> str:
     """The tools in the order they were called, a run of one tool counted once."""
-    names = [c["function"]["name"] for m in row["messages"] if m["role"] == "assistant" for c in m.get("tool_calls") or []]
+    names = [
+        c["function"]["name"] for m in row["messages"] if m["role"] == "assistant" for c in m.get("tool_calls") or []
+    ]
     return ">".join(n for i, n in enumerate(names) if i == 0 or names[i - 1] != n) or "(none)"
 
 
@@ -40,8 +43,14 @@ def rebalance(rows: list[dict], target: int, cap: int = 4, seed: int = 1) -> tup
         total += len(groups[k])
     out = [r for k, v in groups.items() for r in v for _ in range(copies[k])]
     random.Random(f"autobalance:{seed}").shuffle(out)
-    return out, {"unique_rows": len(rows), "rows": len(out), "groups": len(groups),
-                 "by_group": {k: {"seen": len(v), "copies": copies[k]} for k, v in sorted(groups.items(), key=lambda x: -len(x[1]))}}
+    return out, {
+        "unique_rows": len(rows),
+        "rows": len(out),
+        "groups": len(groups),
+        "by_group": {
+            k: {"seen": len(v), "copies": copies[k]} for k, v in sorted(groups.items(), key=lambda x: -len(x[1]))
+        },
+    }
 
 
 def main() -> None:
@@ -56,7 +65,10 @@ def main() -> None:
     rows, manifest = rebalance(read_jsonl(args.rows)[: args.limit], args.target, args.cap, args.seed)
     write_jsonl(rows, args.out)
     Path(args.out).with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
-    print(json.dumps({k: manifest[k] for k in ("unique_rows", "rows", "groups")}), Counter(signature(r) for r in rows).most_common(3))
+    print(
+        json.dumps({k: manifest[k] for k in ("unique_rows", "rows", "groups")}),
+        Counter(signature(r) for r in rows).most_common(3),
+    )
 
 
 if __name__ == "__main__":

@@ -14,10 +14,10 @@ SERVER=$!
 trap 'kill $SERVER 2>/dev/null; wait $SERVER 2>/dev/null || true' EXIT
 for _ in $(seq 180); do curl -sf localhost:8000/v1/models > /dev/null 2>&1 && break; sleep 10; done
 if [ -n "${DEV:-}" ]; then
-    $PY -m island.run24 --tasks $B/dev.jsonl --answers $B/dev-answers.jsonl --arm cards=$B/arms/cards.txt \
+    $PY -m testbed.run24 --tasks $B/dev.jsonl --answers $B/dev-answers.jsonl --arm cards=$B/arms/cards.txt \
         --arm checked=$B/arms/checked.txt --rounds 1 --parallel 6 --fail $B/fail.jsonl --fail-rounds 1 --out "$OUT"
 else
-    $PY -m island.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm none=$B/arms/none.txt \
+    $PY -m testbed.run24 --tasks $B/tickets.jsonl --answers $B/answers.jsonl --arm none=$B/arms/none.txt \
         --arm records=$B/arms/records.txt --arm cards=$B/arms/cards.txt --arm checked=$B/arms/checked.txt \
         --rounds 2 --parallel 6 --fail $B/fail.jsonl --fail-rounds 3 --out "$OUT"
 fi

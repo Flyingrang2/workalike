@@ -6,6 +6,7 @@ worker has on screen at the start. Notes, thoughts, incident text, actor ids and
 task metadata therefore never reach training data, whatever else a record holds.
 Error results stay: a mistake followed by a correct recovery is worth learning.
 """
+
 from __future__ import annotations
 
 # Every field a worker has on screen. quote-desk/2 adds the discount authority and what was sent so far;

@@ -12,13 +12,14 @@ guard() reads held drafts against the desk before anything can be approved: amou
 the desk, prices stay at list or within the discount authority (or the person's okay), never under the floor,
 and every line has the stock by its ship date. The model's words never decide whether a draft is safe.
 """
+
 from __future__ import annotations
 
 import copy
 import dataclasses
 import re
-import unicodedata
 import secrets
+import unicodedata
 
 from . import agent
 from .desk import Desk, cents, customer_prices
@@ -35,22 +36,39 @@ PRODUCT_SYSTEM = (
     "owner goes to that person; either one ends your work on the ticket for now. "
     "When you have finished with the ticket, answer with: Done."
 )
-RULES_USED = ("Your work on this ticket is held for the person at this desk. Which of the confirmed rules did you "
-              "follow? Answer with one line only: Rules used: R1, R4 (or: Rules used: none)")
-# Every amount a reply can state: $12.50, $.50, 12.50 USD, 12 dollars (after NFKC, so a full-width ＄ counts too).
-AMOUNT = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?|\.\d+)|(?<![\w.])(\d[\d,]*(?:\.\d+)?|\.\d+)\s?(?:usd|dollars?)\b",
-                    re.IGNORECASE)
+NOT_DELIVERED = (
+    "Nothing has reached the customer or the owner yet: text you write here goes nowhere. "
+    "Finish with send_reply or ask_owner."
+)
+RULES_USED = (
+    "Your work on this ticket is held for the person at this desk. Which of the confirmed rules did you "
+    "follow? Answer with one line only: Rules used: R1, R4 (or: Rules used: none)"
+)
+# Every amount a reply can state: $12.50, $.50, 12.50$, 12.50 USD, 12 dollars (after NFKC, so a full-width ＄ counts too).
+AMOUNT = re.compile(
+    r"\$\s?(\d[\d,]*(?:\.\d+)?|\.\d+)|(?<![\w.])(\d[\d,]*(?:\.\d+)?|\.\d+)\s?(?:usd\b|dollars?\b|\$(?!\s?\d))",
+    re.IGNORECASE,
+)
+INNER_WORDS = re.compile(
+    r"\bfloor\b|\bmargins?\b|\bauthority\b", re.I
+)  # what the desk works within, not the customer's to read
 QUOTE_ID = re.compile(r"\bQ-\d+-\d+\b", re.IGNORECASE)
 RULE_ID = re.compile(r"\bR(\d+)\b")
 # What a held-back draft is told before it is written again, by the check that failed.
-HINTS = {"답장 초안": "Finish with a reply to the customer or a question to the owner.",
-         "가격은 견적으로만": "Put prices only on an attached quote; a reply without a quote states no price.",
-         "원가 비공개": "Never tell the customer our unit cost.",
-         "금액은 데스크 값": "State only customer prices the desk gave you (list, quote or approved prices), "
-                         "never a cost or the floor price.",
-         "견적번호 확인": "Name only quotes that exist for this ticket or the customer's earlier quotes.",
-         "quote": "Every quote must keep list price or a discount within your authority (or the owner's okay), "
-                  "never under the floor, with stock for each ship date."}
+# The check names are Korean because the desk's default screen is, and recorded results carry them as keys, so they
+# stay as they ran. workalike/lang.py holds the English: reply draft, prices only on a quote, cost stays private,
+# inner limits stay private, amounts come from the desk, quote ids exist.
+HINTS = {
+    "답장 초안": "Finish with a reply to the customer or a question to the owner.",
+    "가격은 견적으로만": "Put prices only on an attached quote; a reply without a quote states no price.",
+    "원가 비공개": "Never tell the customer our unit cost.",
+    "내부 기준 비공개": "Never tell the customer about a floor price, a margin or your discount authority.",
+    "금액은 데스크 값": "State only customer prices the desk gave you (list, quote or approved prices), "
+    "never a cost or the floor price.",
+    "견적번호 확인": "Name only quotes that exist for this ticket or the customer's earlier quotes.",
+    "quote": "Every quote must keep list price or a discount within your authority (or the owner's okay), "
+    "never under the floor, with stock for each ship date.",
+}
 
 
 def _known_ticket(state, ticket_id):
@@ -71,8 +89,12 @@ def held_reply(state, ticket_id, message, quote_id=None):
             return {"error": "unknown_quote", "quote_id": quote_id}
     state["outbox"].append({"ticket_id": ticket_id, "message": message, "quote_id": quote_id})
     state["stop"] = state["stop"] or "draft"
-    return {"status": "held", "ticket_id": ticket_id, "reply_no": len(state["outbox"]),
-            "note": "Held for the person at this desk to approve; nothing was sent. Your work here ends now."}
+    return {
+        "status": "held",
+        "ticket_id": ticket_id,
+        "reply_no": len(state["outbox"]),
+        "note": "Held for the person at this desk to approve; nothing was sent. Your work here ends now.",
+    }
 
 
 def ask_person(state, ticket_id, question):
@@ -100,32 +122,48 @@ def guarded(name, handler):
     """Nothing runs once the ticket waits for the person, and a tool called over and over is refused with the way out.
     A model that forgets its reasoning between turns can walk down a price a cent at a time, or call a broken tool
     until the turns run out (11-02: 21 quotes on one ticket, 22 calls of a tool that was down)."""
+
     def run(state, **args):
         if state.get("stop"):
             return {"error": "stopped", "detail": "this ticket is waiting for the person"}
         streak = state.setdefault("streak", {"name": None, "n": 0})
         streak.update(name=name, n=streak["n"] + 1 if streak["name"] == name else 1)
         if streak["n"] > STREAK:
-            return {"error": "repeated_call",
-                    "detail": f"You have called {name} {streak['n'] - 1} times in a row and it will not help. Do not call "
-                              "it again. Reply to the customer, or tell the owner with ask_owner what is blocking you."}
+            return {
+                "error": "repeated_call",
+                "detail": f"You have called {name} {streak['n'] - 1} times in a row and it will not help. Do not call "
+                "it again. Reply to the customer, or tell the owner with ask_owner what is blocking you.",
+            }
         return handler(state, **args)
+
     return run
 
 
 PRODUCT_ENV = dataclasses.replace(
-    V2, system_prompt=PRODUCT_SYSTEM,
-    handlers={name: guarded(name, h) for name, h in {**V2.handlers, "send_reply": held_reply,
-                                                     "ask_owner": ask_person}.items()})
+    V2,
+    system_prompt=PRODUCT_SYSTEM,
+    handlers={
+        name: guarded(name, h) for name, h in {**V2.handlers, "send_reply": held_reply, "ask_owner": ask_person}.items()
+    },
+)
 
 
 def prepare(state: dict, ticket_id: str, answers: dict | None = None) -> dict:
     """A private copy of the shop for one request: no scripted customer or owner, the person's earlier answers,
     and the quotes this ticket was already sent (so a follow-up can name them and the next one is numbered on)."""
     s = copy.deepcopy(state)
-    s.update(tickets=[ticket_id], drafts={q: d for q, d in s["drafts"].items() if d["ticket_id"] == ticket_id},
-             outbox=[], customers={}, talk={}, owner={}, owner_asked=[], answers=copy.deepcopy(answers or {}),
-             questions=[], stop=None)
+    s.update(
+        tickets=[ticket_id],
+        drafts={q: d for q, d in s["drafts"].items() if d["ticket_id"] == ticket_id},
+        outbox=[],
+        customers={},
+        talk={},
+        owner={},
+        owner_asked=[],
+        answers=copy.deepcopy(answers or {}),
+        questions=[],
+        stop=None,
+    )
     return s
 
 
@@ -139,23 +177,59 @@ def rules_used(model, messages: list[dict]) -> list[int] | None:
     return sorted({int(n) for n in RULE_ID.findall(line)})
 
 
-def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, max_turns: int = 24,
-         answers: dict | None = None, episode: str | None = None, actor: str = "agent", env=None,
-         ask_used: bool = True, base_system: str = PRODUCT_SYSTEM) -> dict:
+def work(
+    view: dict,
+    state: dict,
+    model,
+    rules_text: str = "",
+    recorder=None,
+    max_turns: int = 24,
+    answers: dict | None = None,
+    episode: str | None = None,
+    actor: str = "agent",
+    env=None,
+    ask_used: bool = True,
+    base_system: str = PRODUCT_SYSTEM,
+    one_nudge: bool = False,
+) -> dict:
     """Work one request. outcome: draft (a reply waits for approval), asked (a question waits for the person),
     stopped (the model finished with neither: shown as stopped, never as done), max_turns, or error.
     The recorder, if any, gets one episode of its own (entrance "agent"), apart from the person's records.
     env replaces the desk's tools (the failure tests break one); ask_used=False skips the "which rules" call,
-    for text that is not cards; base_system is the prompt an adapter was trained on, when it is not this one."""
+    for text that is not cards; base_system is the prompt an adapter was trained on, when it is not this one.
+    one_nudge: a model that ends in plain words, with nothing held, is told once that those words went nowhere (Muse Spark
+    Open does this about one time in three on a one-call ticket). Off by default, so the frozen tests stay as they ran."""
     env = env or PRODUCT_ENV
     desk = Desk(prepare(state, view["ticket_id"], answers), recorder, env=env)
     if recorder:
-        recorder.start(episode or "e-" + secrets.token_hex(5), view, task_id=view["ticket_id"], actor=actor,
-                       env=PRODUCT_ENV.version, entrance="agent")
+        recorder.start(
+            episode or "e-" + secrets.token_hex(5),
+            view,
+            task_id=view["ticket_id"],
+            actor=actor,
+            env=PRODUCT_ENV.version,
+            entrance="agent",
+        )
     system = base_system + ("\n\n" + rules_text.strip() if rules_text.strip() else "")
 
+    nudged = [not one_nudge]
+
     def until_held(messages, tools):
-        return {"content": "Done."} if desk.state["stop"] else model(messages, tools)
+        if desk.state["stop"]:
+            return {"content": "Done."}
+        reply = model(messages, tools)
+        if not reply.get("tool_calls") and not nudged[0]:
+            nudged[0] = True
+            return model(
+                messages
+                + [
+                    {"role": "assistant", "content": reply.get("content") or ""},
+                    {"role": "user", "content": NOT_DELIVERED},
+                ],
+                tools,
+            )
+        return reply
+
     try:
         messages, status = agent.run(desk, view, until_held, max_turns, system, env=env)
         error = None
@@ -164,21 +238,38 @@ def work(view: dict, state: dict, model, rules_text: str = "", recorder=None, ma
     if recorder:
         recorder.end(status)
     s = desk.state
-    outcome = ("error" if error else "asked" if s["stop"] == "asked" else "draft" if s["outbox"]
-               else "max_turns" if status == "max_turns" else "stopped")
+    outcome = (
+        "error"
+        if error
+        else "asked"
+        if s["stop"] == "asked"
+        else "draft"
+        if s["outbox"]
+        else "max_turns"
+        if status == "max_turns"
+        else "stopped"
+    )
     used = None
     if ask_used and rules_text.strip() and messages and outcome in ("draft", "asked"):
         try:
             used = rules_used(model, messages)
         except Exception:
             used = None
-    return {"outcome": outcome, "error": error, "drafts": list(s["outbox"]), "questions": list(s["questions"]),
-            "quotes": {q: d for q, d in s["drafts"].items()}, "used": used, "history": desk.history,
-            "state": s, "system": system}
+    return {
+        "outcome": outcome,
+        "error": error,
+        "drafts": list(s["outbox"]),
+        "questions": list(s["questions"]),
+        "quotes": {q: d for q, d in s["drafts"].items()},
+        "used": used,
+        "history": desk.history,
+        "state": s,
+        "system": system,
+    }
 
 
 def price_problem(state: dict, ticket_id: str, line: dict, lines: list[dict]) -> str | None:
-    """The scorer's price rule (island/score2.price_problem), read from the desk state instead of the grader."""
+    """The scorer's price rule (testbed/score2.price_problem), read from the desk state instead of the grader."""
     sku, p = line["sku"], line["unit_price"]
     listed = list_price(state, sku, lines)
     if approved_price(state, sku, p) or abs(p - listed) <= 0.0051:
@@ -197,13 +288,16 @@ def amounts(message: str) -> list[str]:
     return [a or b for a, b in AMOUNT.findall(text)]
 
 
-def guard(state: dict, ticket_id: str, history: list[dict]) -> list[dict]:
+def guard(state: dict, ticket_id: str, history: list[dict], inner_words: bool = False) -> list[dict]:
     """Checks a held draft must pass before it can be approved. Each is {"name", "ok", "detail"} in Korean.
     Every amount in a reply is read, attached quote or not, and every quote a reply attaches or names is checked."""
     replies = [r for r in state["outbox"] if r["ticket_id"] == ticket_id]
     prices = customer_prices(c["result"] for c in history)
-    costs = {cents(c["result"]["unit_cost"]) for c in history
-             if c["name"] == "get_cost" and isinstance(c["result"], dict) and "unit_cost" in c["result"]}
+    costs = {
+        cents(c["result"]["unit_cost"])
+        for c in history
+        if c["name"] == "get_cost" and isinstance(c["result"], dict) and "unit_cost" in c["result"]
+    }
     stated = [m for r in replies for m in amounts(r["message"])]
     stray = sorted({m for m in stated if cents(m) not in prices})
     shown = sorted({m for m in stated if cents(m) in costs - prices})
@@ -213,15 +307,36 @@ def guard(state: dict, ticket_id: str, history: list[dict]) -> list[dict]:
     unknown = sorted(named - mine - {q.upper() for q in state["quotes"]})
     checks = [
         {"name": "답장 초안", "ok": bool(replies), "detail": f"{len(replies)}건 승인 대기" if replies else "없음"},
-        {"name": "가격은 견적으로만", "ok": not loose,
-         "detail": "견적 없이 가격을 적은 답장이 있습니다" if loose else "견적 밖 가격 없음"},
-        {"name": "원가 비공개", "ok": not shown,
-         "detail": "원가가 답장에 있습니다: " + ", ".join(f"${s}" for s in shown) if shown else "원가 없음"},
-        {"name": "금액은 데스크 값", "ok": not stray,
-         "detail": "데스크가 준 적 없는 금액: " + ", ".join(f"${s}" for s in stray) if stray else "모두 데스크 값"},
-        {"name": "견적번호 확인", "ok": not unknown,
-         "detail": "이 티켓에 없는 견적번호: " + ", ".join(unknown) if unknown else "모두 있는 번호"},
+        {
+            "name": "가격은 견적으로만",
+            "ok": not loose,
+            "detail": "견적 없이 가격을 적은 답장이 있습니다" if loose else "견적 밖 가격 없음",
+        },
+        {
+            "name": "원가 비공개",
+            "ok": not shown,
+            "detail": "원가가 답장에 있습니다: " + ", ".join(f"${s}" for s in shown) if shown else "원가 없음",
+        },
+        {
+            "name": "금액은 데스크 값",
+            "ok": not stray,
+            "detail": "데스크가 준 적 없는 금액: " + ", ".join(f"${s}" for s in stray) if stray else "모두 데스크 값",
+        },
+        {
+            "name": "견적번호 확인",
+            "ok": not unknown,
+            "detail": "이 티켓에 없는 견적번호: " + ", ".join(unknown) if unknown else "모두 있는 번호",
+        },
     ]
+    if inner_words:  # off for the frozen tests, which ran without it
+        said = sorted({w.lower() for r in replies for w in INNER_WORDS.findall(r["message"])})
+        checks.append(
+            {
+                "name": "내부 기준 비공개",
+                "ok": not said,
+                "detail": "답장에 내부 기준이 있습니다: " + ", ".join(said) if said else "내부 기준 없음",
+            }
+        )
     for qid in sorted({r["quote_id"] for r in replies if r.get("quote_id")} | (named & mine)):
         lines = state["drafts"][qid]["lines"]
         problems = [p for l in lines if (p := price_problem(state, ticket_id, l, lines))]
@@ -229,8 +344,13 @@ def guard(state: dict, ticket_id: str, history: list[dict]) -> list[dict]:
             when = stock_problem(state["catalog"][sku], [l for l in lines if l["sku"] == sku])
             if when:
                 problems.append(f"{sku}는 {when}까지 재고가 모자랍니다")
-        checks.append({"name": f"견적 {qid}", "ok": not problems,
-                       "detail": "; ".join(problems) or "가격, 권한, 최저 단가, 출고일별 재고 모두 맞음"})
+        checks.append(
+            {
+                "name": f"견적 {qid}",
+                "ok": not problems,
+                "detail": "; ".join(problems) or "가격, 권한, 최저 단가, 출고일별 재고 모두 맞음",
+            }
+        )
     return checks
 
 
@@ -241,8 +361,10 @@ def with_one_rewrite(attempt, rules: str):
     failed = [c for c in checks if not c["ok"]]
     if not failed:
         return done, checks, None
-    note = ("A draft you wrote for this ticket was held back by the desk's checks. Write it again and "
-            "avoid this: " + " ".join(HINTS.get(c["name"], HINTS["quote"]) for c in failed))
+    note = (
+        "A draft you wrote for this ticket was held back by the desk's checks. Write it again and "
+        "avoid this: " + " ".join(HINTS.get(c["name"], HINTS["quote"]) for c in failed)
+    )
     first = {"drafts": done["drafts"], "failed": failed, "job": done}
     done, checks = attempt((rules + "\n\n" + note).strip())
     return done, checks, first

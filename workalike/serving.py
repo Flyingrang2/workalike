@@ -1,4 +1,5 @@
 """The served model on the GPU box, for workalike.autolearn: start it with an adapter, stop it, and work the fixed check."""
+
 from __future__ import annotations
 
 import os
@@ -20,8 +21,12 @@ class Server:
 
     def start(self, adapters: dict[str, str]):
         self.stop()
-        env = {**os.environ, "M": self.base, "QUANT": os.environ.get("QUANT", "fp8_per_channel"),
-               "ADAPTERS": " ".join(f"{k}={v}" for k, v in adapters.items())}
+        env = {
+            **os.environ,
+            "M": self.base,
+            "QUANT": os.environ.get("QUANT", "fp8_per_channel"),
+            "ADAPTERS": " ".join(f"{k}={v}" for k, v in adapters.items()),
+        }
         Path(self.log).parent.mkdir(parents=True, exist_ok=True)
         self.proc = subprocess.Popen(["bash", "scripts/serve.sh", self.log], env=env)
         for _ in range(180):
@@ -35,8 +40,8 @@ class Server:
 
 def fixed_check(server: Server, tasks_path: str, answers_path: str, base_url: str):
     """check(name, adapter path): serve that adapter and work the fixed tickets through the product's own path."""
-    from island.grade24 import grade, tally
-    from island.run24 import run_one
+    from testbed.grade24 import grade, tally
+    from testbed.run24 import run_one
 
     from .envs import V2
     from .model_client import ChatModel
@@ -49,4 +54,5 @@ def fixed_check(server: Server, tasks_path: str, answers_path: str, base_url: st
         make = lambda: ChatModel(base_url, name, temperature=0, max_tokens=16000)  # noqa: E731
         rows = [grade(answers[t["task_id"]], run_one(t, "", make, base_system=V2.system_prompt)) for t in tasks]
         return tally(rows)
+
     return check

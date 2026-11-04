@@ -1,4 +1,4 @@
-# generated data: rebuild with python -m island.gen_h1
+# generated data: rebuild with python -m testbed.gen_h1
 data/
 runs/
 adapters/
@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 .venv*/
 .pytest_cache/
+site/dist*/
+uv.lock
+.env
+*.pem

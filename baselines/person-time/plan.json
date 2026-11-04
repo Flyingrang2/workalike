@@ -1,0 +1,137 @@
+{
+ "seed": "person-time",
+ "tickets_sha256": "dbbbe4a749936af1c7a8df93b585bceef67b03e19323d475ce64e890e82b22e1",
+ "lora": {
+  "arm": "p-checked",
+  "round": 1
+ },
+ "warmup": [
+  {
+   "task_id": "test24dev-00",
+   "mode": "hand",
+   "warmup": true
+  }
+ ],
+ "tickets": [
+  {
+   "task_id": "test24-13",
+   "mode": "hand",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-16",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-04",
+   "mode": "review",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-05",
+   "mode": "hand",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-09",
+   "mode": "hand",
+   "group": "approval"
+  },
+  {
+   "task_id": "test24-08",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-06",
+   "mode": "review",
+   "group": "approval"
+  },
+  {
+   "task_id": "test24-02",
+   "mode": "hand",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-21",
+   "mode": "hand",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-15",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-17",
+   "mode": "review",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-00",
+   "mode": "hand",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-23",
+   "mode": "hand",
+   "group": "scope"
+  },
+  {
+   "task_id": "test24-03",
+   "mode": "review",
+   "group": "scope"
+  },
+  {
+   "task_id": "test24-10",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-14",
+   "mode": "hand",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-11",
+   "mode": "hand",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-01",
+   "mode": "review",
+   "group": "approval"
+  },
+  {
+   "task_id": "test24-22",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-12",
+   "mode": "hand",
+   "group": "approval"
+  },
+  {
+   "task_id": "test24-07",
+   "mode": "hand",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-19",
+   "mode": "review",
+   "group": "hold"
+  },
+  {
+   "task_id": "test24-20",
+   "mode": "review",
+   "group": "prepare"
+  },
+  {
+   "task_id": "test24-18",
+   "mode": "hand",
+   "group": "prepare"
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up a fresh GPU box (Ubuntu, NVIDIA driver already installed) for the Hypothesis 1 runs.
+# Set up a fresh GPU box (Ubuntu, NVIDIA driver already installed) to run workalike.
 #   bash scripts/setup_gpu.sh            # run from the repo root on the GPU box
 # Two separate environments so vLLM's pinned torch never fights the training stack:
 #   .venv-train  torch, transformers, peft, bitsandbytes, accelerate
@@ -22,27 +22,21 @@ export PATH="$HOME/.local/bin:$PATH"
 
 echo "== training env"
 uv venv -q --python 3.12 .venv-train
-uv pip install -q --python .venv-train/bin/python torch "transformers>=5" peft bitsandbytes accelerate jinja2 huggingface_hub
+# Pinned to the versions the published adapter was trained and served with.
+uv pip install -q --python .venv-train/bin/python torch==2.15.0 transformers==5.22.1 peft==0.21.2 bitsandbytes==0.50.2 accelerate==1.15.0 jinja2 huggingface_hub
 .venv-train/bin/python -c "import torch; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'gpu ok', torch.cuda.is_available(), torch.cuda.get_device_capability())"
 
 echo "== serving env"
 uv venv -q --python 3.12 .venv-serve
-uv pip install -q --python .venv-serve/bin/python vllm playwright
+uv pip install -q --python .venv-serve/bin/python vllm==0.33.0 playwright
 .venv-serve/bin/python -m playwright install --with-deps chromium >/dev/null
 .venv-serve/bin/python -c "import vllm; print('vllm', vllm.__version__)"
 
 echo "== model"
 mkdir -p "$(dirname "$MODEL_DIR")"
-# Plain HTTP: the xet backend stalled at about 150 KB/s on 10-29 while plain downloads ran near 280 MB/s.
-# If the download fails, copy the backup kept on the EBS volume (about 125 MB/s).
-BACKUP=${MODEL_BACKUP:-${BACKUP_DIR:-$HOME/backup}/models/glimmer}
-HF_HUB_DISABLE_XET=1 .venv-train/bin/hf download meta-models/Muse-Glimmer-30B --local-dir "$MODEL_DIR" \
-  || { [ -f "$BACKUP/config.json" ] && rsync -a --exclude .cache "$BACKUP/" "$MODEL_DIR/"; }
+# Plain HTTP: the xet backend stalled in our runs while plain downloads stayed fast.
+HF_HUB_DISABLE_XET=1 .venv-train/bin/hf download meta-models/Muse-Glimmer-30B --local-dir "$MODEL_DIR"
 du -sh "$MODEL_DIR"
-
-echo "== data"
-python3 -m island.gen_h1 --out data/h1 --show 0 >/dev/null
-.venv-train/bin/python scripts/render_sft.py --tokenizer "$MODEL_DIR" --data data/h1
 
 echo "== versions"
 for env in .venv-train .venv-serve; do echo "$env"; uv pip list --python $env/bin/python 2>/dev/null | grep -E -i "^(torch|transformers|peft|bitsandbytes|accelerate|vllm) " ; done

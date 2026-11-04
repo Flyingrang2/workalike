@@ -1,0 +1,116 @@
+<title>workalike: the evidence</title>
+<meta name="description" content="Every claim about workalike, where to try it, and the raw record behind it.">
+<meta property="og:title" content="workalike: the evidence">
+<meta property="og:description" content="Every claim, where to try it, and the raw record behind it. All 144 test runs, readable in the browser.">
+<meta property="og:image" content="https://flyingrang2.github.io/workalike/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Gochi+Hand&family=Instrument+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="wobble" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency=".012" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter></defs></svg>
+<main class="evidence">
+  <header class="ev-head">
+    <p><a href="./">workalike</a></p>
+    <h1>The evidence</h1>
+    <p class="second">What changed along the way, every claim on the main page and the record behind it, and all 144 test runs.</p>
+  </header>
+
+  <section class="section" aria-labelledby="changed-title">
+    <h2 id="changed-title">What changed along the way</h2>
+    <div class="changes">
+      <div><h3>We changed the idea on day three</h3><p>We began by trying to copy how each person differs in style. A colleague covering a desk needs the rules behind the work more than a style. So the product became finding those rules, with a person settling what the records can't. Each person still gets an adapter.</p></div>
+      <div><h3>We threw out a round of results</h3><p>A filter that built the training rows dropped the desk's discount authority and what had already been sent, so the rows never matched what the model sees at work. The adapter results from that round were voided. A <a href="https://github.com/Flyingrang2/workalike/blob/main/tests/test_score2.py">new test</a> replays the records through the real loop and checks each prompt against its training row. It fails on the old code.</p></div>
+      <div><h3>We wrote a second test</h3><p>We used the first 24 tickets to shape the method, so they could no longer judge it. The main test is 24 new tickets from a new seed, with the answers hashed before any run. On the first sheet, a person's review changed none of the 10 rules and added 29 answers, and the score moved little (23 and 22 right before, 23 and 23 after). So the product now applies rules as found and asks only the open points.</p></div>
+      <div><h3>The automatic training isn't there yet</h3><p>The automatic training built into the product has run once on a real GPU, and its safety check refused the adapter. The check did its job, but this training has not yet produced an adapter good enough to use. Every LoRA number on this site comes from the practice script.</p></div>
+      <div><h3>We tried to break it</h3><p>Three failure scenarios, three times each. With a broken price tool it asked, 3 of 3. With a rule that doesn't apply it quoted list, 3 of 3. <a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/test24-lora">With written rules that conflict</a>, it went ahead without asking, 3 of 3, and took 1.71% off, which neither rule says. That last one isn't solved. We also haven't compared the LoRA with a shortened or retrieved rule book, and <a href="https://github.com/Flyingrang2/workalike#limits">the README's limits</a> lists the rest.</p></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="claims-title">
+    <h2 id="claims-title">Check it yourself</h2>
+    <div class="prose"><p>These commands need no GPU. Rows in the table that do need one say so.</p></div>
+    <pre><code>git clone https://github.com/Flyingrang2/workalike &amp;&amp; cd workalike
+python3 scripts/check_numbers.py --check             # the tables and main numbers, recomputed from the raw rows
+sha256sum -c baselines/results/test24b/sheet.sha256  # the frozen sheet has not changed
+uv run --with pytest pytest                          # the tests</code></pre>
+    <div class="table-wrap">
+      <table class="claims">
+        <thead><tr><th scope="col">What we say</th><th scope="col">Where to check</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">It finds rules in work records, each tied to the records behind it</th><td><a href="./#what">All 10 rules on the main page</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/rules/cards.json">the model's output</a> and <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/rules/records.jsonl">the 60 records</a></td></tr>
+          <tr><th scope="row">It asks only what the records could not settle</th><td><a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/v2/c60-cards.person.json">The person's 29 answers</a>, none of the 10 rules changed</td></tr>
+          <tr><th scope="row">Trained, the rules leave the prompt</th><td>The prompts are just below: the desk's short job description stays, and the rule book goes.  <a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/practice">Practice and training</a>. <a href="https://github.com/Flyingrang2/workalike/releases/latest">Download the LoRA</a> (needs a GPU)</td></tr>
+          <tr><th scope="row">The results table</th><td><a href="#runs">All 144 runs below</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/test24b/graded.jsonl">raw rows</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/scripts/check_numbers.py">the script that recomputes them</a></td></tr>
+          <tr><th scope="row">About five times the tickets on one GPU</th><td><a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/throughput">Both runs and the wall clock</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/scripts/throughput.sh">the command</a> (needs a GPU)</td></tr>
+          <tr><th scope="row">When a ship date is missing, it asks</th><td><a href="./#try-title">The second request in the box</a>, <a href="#runs?group=date">the 18 runs</a>. The LoRA asked in 5 of 6; the third run below is the other one</td></tr>
+          <tr><th scope="row">On the box's own two requests, the LoRA works with no manual</th><td><a href="./#try-title">The third column in the box</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/demo-lora/results.jsonl">five runs of each, on our GPU</a></td></tr>
+          <tr><th scope="row">It holds the person's discount</th><td><a href="./#try-title">The first request in the box</a>, <a href="#runs?key=discount-authority-yes">all six runs of the ticket</a></td></tr>
+          <tr><th scope="row">The desk's checks compare each draft with the desk's own numbers</th><td><a href="#runs?first=held">The 20 first drafts they held back</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/workalike/product.py">the code</a></td></tr>
+          <tr><th scope="row">Nothing goes out until a person approves</th><td>"Held for your approval" in the box. <a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/product-run">Six requests, one approval, one send</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/tests/test_product.py">the tests</a></td></tr>
+          <tr><th scope="row">Change a rule and the adapter turns off</th><td><a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/product-run/jobs.jsonl">The same requests before and after</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/tests/test_app.py">the tests</a></td></tr>
+          <tr><th scope="row">The product kept a failed adapter off</th><td><a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/learning-round">The learning round</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/workalike/autolearn.py">the gate</a></td></tr>
+          <tr><th scope="row">In the GPU version, your records and your model stay on the GPU</th><td><a href="https://github.com/Flyingrang2/workalike/blob/main/tests/test_stays_local.py">A test that holds the code to it</a>, <a href="https://github.com/Flyingrang2/workalike/blob/main/scripts/serve.sh">the server's settings</a></td></tr>
+          <tr><th scope="row">We wrote the answers before any run</th><td><a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/test24b/hashes.json">Hashes</a> and <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/test24b/sheet.sha256">the run's own copy</a>. These show the sheet has not changed. The order rests on our commit dates and records</td></tr>
+          <tr><th scope="row">A blind second reader, a fresh Claude agent, agreed on 96 of 98</th><td><a href="https://github.com/Flyingrang2/workalike/tree/main/baselines/results/test24b">What it saw, what it said, and which draft was which</a></td></tr>
+          <tr><th scope="row">We built it during the hackathon</th><td><a href="https://github.com/Flyingrang2/workalike/commits/main">The public history is squashed into seven stages</a>. <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/original-commits-per-day.txt">Commits per day</a> and <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/experiments.tsv">33 GPU jobs by date</a> are here, and the full log is available to the organizers</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 class="how">What the model reads</h3>
+    <!--PROMPTS-->
+  </section>
+
+  <section class="section" aria-labelledby="three-title">
+    <h2 id="three-title">Three runs</h2>
+    <div class="prose"><p>All three are the LoRA, with no rules in its prompt. One went right, one was caught by the desk's checks, and one went wrong after the checks sent it back.</p></div>
+    <div id="three"><p>Loading the runs.</p></div>
+  </section>
+
+  <section class="section" aria-labelledby="full-title">
+    <h2 id="full-title">The full table</h2>
+    <div class="prose"><p>"Right" means the outcome the answer sheet asks for, a draft or a question. "Dangerous" means a person could approve it, and it is wrong or promises what nothing supports. Six of the seven out of the box are the no-ship-date runs.</p></div>
+    <div class="table-wrap">
+      <table>
+        <caption>24 new tickets, each run twice at temperature 0, so read it as 24 tickets seen twice, 48 runs a column. These runs use the checks from the day of the test. The desk has gained one since, which would have sent 5, 8 and 6 of the right drafts back for a rewrite. In the raw files the columns are <code>none</code>, <code>checked</code> and <code>p-checked</code>. p95 is nearest-rank.</caption>
+        <thead><tr><th scope="col"></th><th scope="col">Muse Glimmer out of the box</th><th scope="col">Reading the written rules</th><th scope="col" class="ours">LoRA, no rules in its prompt</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Right</th><td><a href="#runs?arm=none&amp;verdict=right">37</a></td><td><a href="#runs?arm=checked&amp;verdict=right">45</a></td><td class="ours"><a href="#runs?arm=p-checked&amp;verdict=right">41</a></td></tr>
+          <tr><th scope="row">Dangerous drafts</th><td><a href="#runs?arm=none&amp;verdict=dangerous">7</a></td><td>0</td><td class="ours"><a href="#runs?arm=p-checked&amp;verdict=dangerous">1</a></td></tr>
+          <tr><th scope="row">Asked when it did not have to</th><td><a href="#runs?arm=none&amp;verdict=needless_hold">4</a></td><td><a href="#runs?arm=checked&amp;verdict=needless_hold">3</a></td><td class="ours"><a href="#runs?arm=p-checked&amp;verdict=needless_hold">4</a></td></tr>
+          <tr><th scope="row">Still held back after the rewrite, so a person can't approve it</th><td>0</td><td>0</td><td class="ours"><a href="#runs?arm=p-checked&amp;verdict=failed">2</a></td></tr>
+          <tr><th scope="row">Dangerous first drafts, before the desk's checks</th><td>10</td><td>1</td><td class="ours">6</td></tr>
+          <tr><th scope="row">First draft held back by the desk's checks, then rewritten</th><td><a href="#runs?arm=none&amp;first=held">7</a></td><td><a href="#runs?arm=checked&amp;first=held">6</a></td><td class="ours"><a href="#runs?arm=p-checked&amp;first=held">7</a></td></tr>
+          <tr><th scope="row">Seconds per ticket, average</th><td>167</td><td>181</td><td class="ours">29</td></tr>
+          <tr><th scope="row">Seconds per ticket, median</th><td>140</td><td>133</td><td class="ours">26</td></tr>
+          <tr><th scope="row">Seconds per ticket, p95</th><td>377</td><td>456</td><td class="ours">68</td></tr>
+          <tr><th scope="row">Tokens generated per ticket</th><td>3,232</td><td>3,497</td><td class="ours">534</td></tr>
+          <tr><th scope="row">Tokens per ticket, in and out</th><td>19,647</td><td>30,726</td><td class="ours">9,946</td></tr>
+          <tr><th scope="row">Tickets an hour on one GPU, measured alone</th><td>not measured</td><td>100</td><td class="ours">485</td></tr>
+          <tr><th scope="row">Right tickets an hour, same run</th><td>not measured</td><td>96</td><td class="ours">425</td></tr>
+          <tr><th scope="row">GPU cost per ticket at full load, rented at $3.69 an hour</th><td>not measured</td><td>$0.037</td><td class="ours">$0.008</td></tr>
+          <tr><th scope="row">Discount on a pushback, 5% allowed, two runs</th><td>4.94%, 4.94%</td><td>1.04%, 1.04%</td><td class="ours">0.91%, 0.65%</td></tr>
+          <tr><th scope="row">Discount on a pushback, 5% would go under the floor, two runs</th><td>4.58%, 4.58%</td><td>1.00%, 0.83%</td><td class="ours">0.83%, 0.83%</td></tr>
+          <tr><th scope="row">Discount when asked for 3% off, two runs</th><td>3.01%, 3.01%</td><td>3.01%, 3.01%</td><td class="ours">2.29%, 2.29%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 class="how">How the LoRA was made</h3>
+    <ol class="steps-big">
+      <li>A scripted worker handled 60 tickets on the sample desk. Muse Glimmer read those records, proposed 10 rules and listed 30 open points.</li>
+      <li>One person changed none of the rules and answered 29 of the points, in about 10 to 15 minutes, by their own estimate.</li>
+      <li>Muse Glimmer worked 173 new tickets from those rules. We kept the 155 that passed the checks, made no failed call, and were right by the generator's answers for those practice tickets. None of them is a test ticket.</li>
+      <li>Those 155, with the rules taken out, trained a LoRA on one 48GB GPU. Practice took 92 minutes and training 40, about $8 of rented GPU. One step was rerun, so the real bill was about $10.</li>
+    </ol>
+  </section>
+
+  <section class="section" id="runs" aria-labelledby="runs-title">
+    <h2 id="runs-title">Every run</h2>
+    <div class="filters" id="filters"></div>
+    <p class="count" id="count" aria-live="polite"></p>
+    <div class="run-head" aria-hidden="true"><span>Column</span><span>Ticket</span><span>Verdict</span><span>Run, time</span></div>
+    <div id="list"><p>Loading the runs.</p></div>
+  </section>
+</main>
+<footer><a href="./">Back to workalike</a>. Tickets, customers and shops are made up. <a href="https://github.com/Flyingrang2/workalike/blob/main/baselines/results/README.md">How to read the raw files</a>.</footer>
+<script src="runs.js"></script>

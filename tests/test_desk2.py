@@ -1,4 +1,5 @@
 """quote-desk/2: stock by date, the floor price, notices, the owner, and the customer's fixed answers."""
+
 from workalike import desk2
 from workalike.desk import Desk
 from workalike.envs import V1, V2
@@ -11,19 +12,36 @@ def state(**customer):
     s = desk2.empty_state("2026-10-01")
     s["tickets"].append(T)
     s["catalog"] = {
-        "PST-2436": {"name": "24x36 poster", "unit_cost": 4.06, "on_hand": 56, "restock_date": "2026-10-04",
-                     "restock_qty": 300, "substitutes": ["PST-1824"]},
-        "PST-1824": {"name": "18x24 poster", "unit_cost": 2.62, "on_hand": 1034, "restock_date": None,
-                     "restock_qty": 0, "substitutes": ["PST-2436"]},
+        "PST-2436": {
+            "name": "24x36 poster",
+            "unit_cost": 4.06,
+            "on_hand": 56,
+            "restock_date": "2026-10-04",
+            "restock_qty": 300,
+            "substitutes": ["PST-1824"],
+        },
+        "PST-1824": {
+            "name": "18x24 poster",
+            "unit_cost": 2.62,
+            "on_hand": 1034,
+            "restock_date": None,
+            "restock_qty": 0,
+            "substitutes": ["PST-2436"],
+        },
     }
     s["authority"][T] = 0.05
     s["owner"][T] = {"says": "Fine to go down to the floor price on this one, your call."}
     s["customers"][T] = {
-        "wants": [{"sku": "PST-2436", "qty": 80, "substitutes": ["PST-1824"]}], "need_by": "2026-10-02",
-        "split_ok": True, "later_ok": False, "substitute_ok": False,
-        "says": {"answer": "Send what you have now and the rest after the restock, that's fine.",
-                 "decline": "We need at least part of it by Oct 2.",
-                 "push_back": "That's more than we paid last time. Anything you can do?"},
+        "wants": [{"sku": "PST-2436", "qty": 80, "substitutes": ["PST-1824"]}],
+        "need_by": "2026-10-02",
+        "split_ok": True,
+        "later_ok": False,
+        "substitute_ok": False,
+        "says": {
+            "answer": "Send what you have now and the rest after the restock, that's fine.",
+            "decline": "We need at least part of it by Oct 2.",
+            "push_back": "That's more than we paid last time. Anything you can do?",
+        },
         **customer,
     }
     return s
@@ -69,7 +87,8 @@ def test_floor_price_and_notices():
 def test_owner_gives_the_fixed_policy():
     d = Desk(state(), env=V2)
     assert d.call("ask_owner", {"ticket_id": T, "question": "Can I take 10% off?"}) == {
-        "owner_reply": "Fine to go down to the floor price on this one, your call."}
+        "owner_reply": "Fine to go down to the floor price on this one, your call."
+    }
     assert d.call("ask_owner", {"ticket_id": "T-9", "question": "?"})["error"] == "unknown_ticket"
 
 
@@ -117,11 +136,18 @@ def test_unknown_sku_lists_similar_items():
 
 
 def test_same_calls_give_the_same_results():
-    calls = [("check_stock", {"sku": "PST-2436", "qty": 80}),
-             ("send_reply", {"ticket_id": T, "message": "Split ok?"}),
-             ("create_quote", {"ticket_id": T, "lines": [line("PST-2436", 56, 7.31, "2026-10-02"),
-                                                         line("PST-2436", 24, 7.31, "2026-10-04")]}),
-             ("send_reply", {"ticket_id": T, "message": "Attached.", "quote_id": "Q-1001-1"})]
+    calls = [
+        ("check_stock", {"sku": "PST-2436", "qty": 80}),
+        ("send_reply", {"ticket_id": T, "message": "Split ok?"}),
+        (
+            "create_quote",
+            {
+                "ticket_id": T,
+                "lines": [line("PST-2436", 56, 7.31, "2026-10-02"), line("PST-2436", 24, 7.31, "2026-10-04")],
+            },
+        ),
+        ("send_reply", {"ticket_id": T, "message": "Attached.", "quote_id": "Q-1001-1"}),
+    ]
     a, b = Desk(state(), env=V2).call_many(calls), Desk(state(), env=V2).call_many(calls)
     assert a == b and a[-1]["result"]["customer_accepted"] == "Q-1001-1"
 
@@ -129,15 +155,23 @@ def test_same_calls_give_the_same_results():
 def test_versions_keep_their_own_tools_prompt_and_screen():
     s = state()
     assert Desk(s).call("ask_owner", {"ticket_id": T, "question": "?"})["error"] == "unknown_tool"
-    view = {"today": "2026-10-01", "ticket_id": T, "from": "Mia Oh, Harbor Books", "body": "250 posters please.",
-            "authority": 0.0, "sent_so_far": "an acknowledgement on 2026-09-30; no quote yet"}
+    view = {
+        "today": "2026-10-01",
+        "ticket_id": T,
+        "from": "Mia Oh, Harbor Books",
+        "body": "250 posters please.",
+        "authority": 0.0,
+        "sent_so_far": "an acknowledgement on 2026-09-30; no quote yet",
+    }
     text = V2.render_view(view)
     assert "Ask the owner before offering any price under list" in text and "no quote yet" in text
     ep = {"view": view, "turns": [], "final": "Done."}
     v2, v1 = sft_row(ep, V2), sft_row({**ep, "view": {k: view[k] for k in ("today", "ticket_id", "from", "body")}})
     assert v2["messages"][0]["content"] == V2.system_prompt and v1["messages"][0]["content"] == V1.system_prompt
-    assert {t["function"]["name"] for t in v2["tools"]} - {t["function"]["name"] for t in v1["tools"]} == \
-        {"ask_owner", "search_catalog"}
+    assert {t["function"]["name"] for t in v2["tools"]} - {t["function"]["name"] for t in v1["tools"]} == {
+        "ask_owner",
+        "search_catalog",
+    }
 
 
 def test_search_catalog_finds_words_in_names_and_codes():

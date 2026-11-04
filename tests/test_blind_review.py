@@ -1,14 +1,15 @@
 """Blind review: drafts are shown without run names, answers are kept, a restart skips answered tickets."""
+
 import json
 import random
 
-from island import worker_c
-from island.blind_review import Review, draft_steps, episodes_by_task
-from island.tasks2 import make_tasks
+from testbed import worker_c
+from testbed.blind_review import Review, draft_steps, episodes_by_task
+from testbed.tasks2 import make_tasks
 from workalike.desk import Desk
 from workalike.envs import V2
+from workalike.person_desk import Korean
 from workalike.record import Recorder
-from workalike.web2 import Korean
 
 
 def c_records(tasks, path, seed):
@@ -21,13 +22,23 @@ def c_records(tasks, path, seed):
 
 
 def korean():
-    return Korean({"tickets": {}, "fixed": {"en": {"owner": [], "customer_defaults": ["a {qid}", "b {qid}", "As I said: "]},
-                                            "ko": {"owner": [], "customer_defaults": ["가 {qid}", "나 {qid}", "말씀드렸듯이: "]}}})
+    return Korean(
+        {
+            "tickets": {},
+            "fixed": {
+                "en": {"owner": [], "customer_defaults": ["a {qid}", "b {qid}", "As I said: "]},
+                "ko": {"owner": [], "customer_defaults": ["가 {qid}", "나 {qid}", "말씀드렸듯이: "]},
+            },
+        }
+    )
 
 
 def test_drafts_hide_the_run_and_keep_answers(tmp_path):
     tasks = make_tasks(11, "dev")[:3]
-    runs = {"secret_base": c_records(tasks, tmp_path / "a.jsonl", 1), "secret_lora": c_records(tasks, tmp_path / "b.jsonl", 2)}
+    runs = {
+        "secret_base": c_records(tasks, tmp_path / "a.jsonl", 1),
+        "secret_lora": c_records(tasks, tmp_path / "b.jsonl", 2),
+    }
     out = tmp_path / "review"
     out.mkdir()
     review = Review(tasks, runs, korean(), lambda en: "[ko] " + en, out, seed=1)

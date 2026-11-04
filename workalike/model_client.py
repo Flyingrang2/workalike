@@ -6,6 +6,7 @@
 With vLLM's --enable-lora, an adapter is selected by passing its name as the model.
 Every call's token usage and wall time are kept in .calls for later comparison.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,15 +29,23 @@ class ChatModel:
         body = {"model": self.model, "messages": to_wire(messages), **self.params}
         if tools:
             body.update(tools=tools, tool_choice="auto")
-        req = urllib.request.Request(self.url, data=json.dumps(body).encode(), method="POST",
-                                     headers={"Content-Type": "application/json",
-                                              "Authorization": f"Bearer {self.api_key}"})
+        req = urllib.request.Request(
+            self.url,
+            data=json.dumps(body).encode(),
+            method="POST",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"},
+        )
         start = time.monotonic()
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
             data = json.loads(resp.read())
         msg = data["choices"][0]["message"]
-        self.calls.append({"seconds": round(time.monotonic() - start, 3), "usage": data.get("usage"),
-                           "finish_reason": data["choices"][0].get("finish_reason")})
+        self.calls.append(
+            {
+                "seconds": round(time.monotonic() - start, 3),
+                "usage": data.get("usage"),
+                "finish_reason": data["choices"][0].get("finish_reason"),
+            }
+        )
         calls = []
         for tc in msg.get("tool_calls") or []:
             raw = tc["function"].get("arguments") or "{}"
@@ -45,5 +54,8 @@ class ChatModel:
             except json.JSONDecodeError:
                 args = {"_unparsed": raw}
             calls.append({"name": tc["function"]["name"], "arguments": args})
-        return {"tool_calls": calls, "content": msg.get("content"),
-                "reasoning": msg.get("reasoning") or msg.get("reasoning_content")}
+        return {
+            "tool_calls": calls,
+            "content": msg.get("content"),
+            "reasoning": msg.get("reasoning") or msg.get("reasoning_content"),
+        }

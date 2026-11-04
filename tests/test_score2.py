@@ -3,6 +3,7 @@
 The meaning is pinned down on worker C's episodes first, then on mutated ones. The record contract
 is checked here too: a training example holds only what was on screen at that moment.
 """
+
 import copy
 import hashlib
 import json
@@ -10,9 +11,9 @@ import random
 
 import pytest
 
-from island import worker_c
-from island.score2 import compare, score, score_records
-from island.tasks2 import FIXED_SHA256, SPLITS, make_tasks
+from testbed import worker_c
+from testbed.score2 import compare, score, score_records
+from testbed.tasks2 import FIXED_SHA256, SPLITS, make_tasks
 from workalike.desk import Desk
 from workalike.desk2 import floor_price
 from workalike.envs import V2
@@ -49,7 +50,13 @@ def replay(task, calls):
 
 
 def test_splits_have_the_planned_sizes_and_fixed_contents(tmp_path):
-    assert {s: len(make_tasks(11, s)) for s in SPLITS} == {"train": 60, "dev": 12, "eval": 24, "dev2": 44, "train150": 150}
+    assert {s: len(make_tasks(11, s)) for s in SPLITS} == {
+        "train": 60,
+        "dev": 12,
+        "eval": 24,
+        "dev2": 44,
+        "train150": 150,
+    }
     for s in SPLITS:  # written the way gen_v2 writes them
         path = tmp_path / f"{s}.jsonl"
         write_jsonl(make_tasks(11, s), path)
@@ -82,6 +89,7 @@ def test_worker_c_handles_every_ticket_validly(split, tmp_path):
 def test_worker_c_switches_with_the_condition():
     def way(t):
         return score(t, run_c_mem(t))["way"]
+
     open_, done = by_family("typo_open"), by_family("typo_confirmed")
     assert way(open_)["asked_first"] and not way(done)["asked_first"]
     so, sc = by_family("short_open"), by_family("short_constrained")
@@ -113,21 +121,36 @@ def test_a_quote_turned_down_for_an_unrevealed_condition_is_not_an_error():
     g, ticket = t["grader"], t["view"]["ticket_id"]
     sku, qty = g["wants"][0]["sku"], g["wants"][0]["qty"]
     cost = t["hidden"]["state"]["catalog"][sku]["unit_cost"]
-    price = Desk(t["hidden"]["state"], env=V2).call("calc_price", {"sku": sku, "qty": qty, "unit_cost": cost})["unit_price"]
-    other = [{"sku": w["sku"], "qty": w["qty"], "ship_by": g["need_by"],
-              "unit_price": Desk(t["hidden"]["state"], env=V2).call(
-                  "calc_price", {"sku": w["sku"], "qty": w["qty"],
-                                 "unit_cost": t["hidden"]["state"]["catalog"][w["sku"]]["unit_cost"]})["unit_price"]}
-             for w in g["wants"][1:]]
+    price = Desk(t["hidden"]["state"], env=V2).call("calc_price", {"sku": sku, "qty": qty, "unit_cost": cost})[
+        "unit_price"
+    ]
+    other = [
+        {
+            "sku": w["sku"],
+            "qty": w["qty"],
+            "ship_by": g["need_by"],
+            "unit_price": Desk(t["hidden"]["state"], env=V2).call(
+                "calc_price",
+                {"sku": w["sku"], "qty": w["qty"], "unit_cost": t["hidden"]["state"]["catalog"][w["sku"]]["unit_cost"]},
+            )["unit_price"],
+        }
+        for w in g["wants"][1:]
+    ]
     later = [{"sku": sku, "qty": qty, "unit_price": price, "ship_by": g["short"]["restock_date"]}] + other
-    split = [{"sku": sku, "qty": g["short"]["on_hand"], "unit_price": price, "ship_by": g["need_by"]},
-             {"sku": sku, "qty": qty - g["short"]["on_hand"], "unit_price": price,
-              "ship_by": g["short"]["restock_date"]}] + other
+    split = [
+        {"sku": sku, "qty": g["short"]["on_hand"], "unit_price": price, "ship_by": g["need_by"]},
+        {"sku": sku, "qty": qty - g["short"]["on_hand"], "unit_price": price, "ship_by": g["short"]["restock_date"]},
+    ] + other
     n = ticket.split("-")[1]
-    ep = replay(t, [("create_quote", {"ticket_id": ticket, "lines": later}),
-                    ("send_reply", {"ticket_id": ticket, "message": "Quote attached.", "quote_id": f"Q-{n}-1"}),
-                    ("create_quote", {"ticket_id": ticket, "lines": split}),
-                    ("send_reply", {"ticket_id": ticket, "message": "Split it is.", "quote_id": f"Q-{n}-2"})])
+    ep = replay(
+        t,
+        [
+            ("create_quote", {"ticket_id": ticket, "lines": later}),
+            ("send_reply", {"ticket_id": ticket, "message": "Quote attached.", "quote_id": f"Q-{n}-1"}),
+            ("create_quote", {"ticket_id": ticket, "lines": split}),
+            ("send_reply", {"ticket_id": ticket, "message": "Split it is.", "quote_id": f"Q-{n}-2"}),
+        ],
+    )
     s = score(t, ep)
     assert s["business_ok"] and s["turned_down"] == 1 and not s["way"]["asked_first"]
     stop = copy.deepcopy(ep)
@@ -136,8 +159,12 @@ def test_a_quote_turned_down_for_an_unrevealed_condition_is_not_an_error():
 
 
 def test_prices_shown_to_the_customer_must_be_valid():
-    t = next(t for t in tasks("train") if t["family"] == "standard"
-             and t["hidden"]["state"]["catalog"][t["grader"]["wants"][0]["sku"]]["unit_cost"] >= 1)
+    t = next(
+        t
+        for t in tasks("train")
+        if t["family"] == "standard"
+        and t["hidden"]["state"]["catalog"][t["grader"]["wants"][0]["sku"]]["unit_cost"] >= 1
+    )
     ep = run_c_mem(t)
     quote = next(c for c in calls_of(ep) if c["name"] == "create_quote")
     over = copy.deepcopy(ep)
@@ -151,8 +178,12 @@ def test_prices_shown_to_the_customer_must_be_valid():
     t2["grader"]["authority"], t2["grader"]["owner"] = 0.0, "hold"
     assert any("discount without authority" in r for r in score(t2, cut)["reasons"])
     loud = copy.deepcopy(ep)
-    ask = {"id": "x", "name": "send_reply", "args": {"ticket_id": t["view"]["ticket_id"], "message": "About $40 all in."},
-           "result": {"status": "sent", "customer_reply": "Thanks."}}
+    ask = {
+        "id": "x",
+        "name": "send_reply",
+        "args": {"ticket_id": t["view"]["ticket_id"], "message": "About $40 all in."},
+        "result": {"status": "sent", "customer_reply": "Thanks."},
+    }
     loud["turns"].insert(0, {"calls": [ask]})
     s = score(t, loud)
     assert "price in a reply without a quote" in s["reasons"] and s["way"]["asked_first"]
@@ -160,8 +191,11 @@ def test_prices_shown_to_the_customer_must_be_valid():
 
 
 def test_owner_consent_counts_only_when_asked_before_the_quote():
-    t = next(t for t in tasks("train") if t["family"] == "reorder_room" and t["grader"]["owner"] == "floor_ok"
-             and t["grader"]["authority"] < 0.05)
+    t = next(
+        t
+        for t in tasks("train")
+        if t["family"] == "reorder_room" and t["grader"]["owner"] == "floor_ok" and t["grader"]["authority"] < 0.05
+    )
     ep = run_c_mem(t)
     names = [c["name"] for c in calls_of(ep)]
     assert "ask_owner" in names and score(t, ep)["business_ok"] and score(t, ep)["way"]["discounted"]
@@ -174,8 +208,18 @@ def test_owner_consent_counts_only_when_asked_before_the_quote():
 
 
 def test_training_examples_hold_only_what_was_on_screen(tmp_path):
-    hidden_words = ["push_back_over", "split_ok", "later_ok", "substitute_ok", "floor_ok", '"policy"', "preference",
-                    "feasible", "grader", "wants"]
+    hidden_words = [
+        "push_back_over",
+        "split_ok",
+        "later_ok",
+        "substitute_ok",
+        "floor_ok",
+        '"policy"',
+        "preference",
+        "feasible",
+        "grader",
+        "wants",
+    ]
     for t in tasks("train") + tasks("dev"):
         _, ep = run_c(t, tmp_path)
         assert set(ep["view"]) <= {"today", "ticket_id", "from", "body", "thread", "authority", "sent_so_far"}
@@ -190,6 +234,7 @@ def test_training_examples_hold_only_what_was_on_screen(tmp_path):
 
         def first(pred):
             return next((i for i, m in enumerate(msgs) if pred(m)), None)
+
         for text_, tool in ((says["answer"], "send_reply"), (owner, "ask_owner")):
             seen = first(lambda m: json.dumps(text_)[1:-1] in m)
             called = first(lambda m: f'"name": "{tool}"' in m)
@@ -200,6 +245,7 @@ def test_the_model_is_trained_on_exactly_the_prompts_it_sees_when_working(tmp_pa
     """Replay C's records through the inference loop: every prompt must be a prefix of the training row."""
     from workalike import agent
     from workalike.serialize import to_messages
+
     for t in tasks("train") + tasks("dev"):
         _, ep = run_c(t, tmp_path)
         assert ep["view"] == t["view"], t["task_id"]  # cleaning keeps every screen field
@@ -211,9 +257,10 @@ def test_the_model_is_trained_on_exactly_the_prompts_it_sees_when_working(tmp_pa
             prompts.append(json.loads(json.dumps(messages)))
             k = len(prompts) - 1
             return {"tool_calls": turns[k]} if k < len(turns) else {"content": ep["final"]}
+
         messages, _ = agent.run(Desk(t["hidden"]["state"], env=V2), t["view"], model, env=V2)
         for p in prompts:
-            assert p == train[:len(p)] and train[len(p)]["role"] == "assistant", t["task_id"]
+            assert p == train[: len(p)] and train[len(p)]["role"] == "assistant", t["task_id"]
         assert json.loads(json.dumps(messages)) == train, t["task_id"]
 
 

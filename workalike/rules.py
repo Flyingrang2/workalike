@@ -7,6 +7,7 @@ says when it applies, what the worker does, which records show it, and what the 
 Which records back a card is worked out in code from record numbers (and, after the merge, from the numbers of
 the batch cards it joins), so the model never copies an episode id and cannot invent one.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,20 +17,23 @@ from pathlib import Path
 from .record import wall_clock
 from .serialize import canonical_json, order_args
 
-CARD = ('{"cards": [{"situation": "...", "action": "...", "evidence": [record numbers], '
-        '"unknowns": ["..."]}]}')
-READ_CARDS = ("Below are numbered records of one worker at the quote desk of a small print shop: each ticket as the "
-              "worker saw it, then every action they took and what came back. Find the rules this worker follows "
-              "that are written nowhere: in which situation they do something particular, and what. For each rule "
-              "give the records that show it and what these records cannot settle yet. Situations and actions are "
-              "general, not about one customer or item. Answer with only this JSON object: " + CARD)
-MERGE_CARDS = ("Below are rule cards about one worker at the quote desk of a small print shop, found in batches of "
-               "their records. Merge them into one set with one card per situation: join the cards that state the "
-               "same rule or cover the same situation (say how the worker acts there in one card), and keep the ones "
-               "that differ. For each card keep at most three things the records leave unsettled, the ones that "
-               "matter most for doing the work. Answer with only this JSON object: "
-               '{"cards": [{"situation": "...", "action": "...", "from": [numbers of the cards it joins], '
-               '"unknowns": ["..."]}]}')
+CARD = '{"cards": [{"situation": "...", "action": "...", "evidence": [record numbers], "unknowns": ["..."]}]}'
+READ_CARDS = (
+    "Below are numbered records of one worker at the quote desk of a small print shop: each ticket as the "
+    "worker saw it, then every action they took and what came back. Find the rules this worker follows "
+    "that are written nowhere: in which situation they do something particular, and what. For each rule "
+    "give the records that show it and what these records cannot settle yet. Situations and actions are "
+    "general, not about one customer or item. Answer with only this JSON object: " + CARD
+)
+MERGE_CARDS = (
+    "Below are rule cards about one worker at the quote desk of a small print shop, found in batches of "
+    "their records. Merge them into one set with one card per situation: join the cards that state the "
+    "same rule or cover the same situation (say how the worker acts there in one card), and keep the ones "
+    "that differ. For each card keep at most three things the records leave unsettled, the ones that "
+    "matter most for doing the work. Answer with only this JSON object: "
+    '{"cards": [{"situation": "...", "action": "...", "from": [numbers of the cards it joins], '
+    '"unknowns": ["..."]}]}'
+)
 AGAIN = "That could not be read as the JSON object asked for ({}). Answer again with only that JSON object."
 
 
@@ -42,8 +46,10 @@ def render_record(ep: dict, env) -> str:
     lines = [env.render_view(ep["view"]), "Actions:"]
     for turn in ep["turns"]:
         for c in turn["calls"]:
-            lines.append(f"- {c['name']} {canonical_json(order_args(c['name'], c['args'], env.spec_by_name))}"
-                         f" -> {canonical_json(c['result'])}")
+            lines.append(
+                f"- {c['name']} {canonical_json(order_args(c['name'], c['args'], env.spec_by_name))}"
+                f" -> {canonical_json(c['result'])}"
+            )
     if ep.get("final"):
         lines.append(f"Final: {ep['final']}")
     return "\n".join(lines)
@@ -64,13 +70,23 @@ def parse_cards(text: str, numbers: str = "evidence", allowed: set[int] | None =
         raise CardError('no "cards" list')
     cards = []
     for c in raw:
-        if not isinstance(c, dict) or not str(c.get("situation") or "").strip() or not str(c.get("action") or "").strip():
+        if (
+            not isinstance(c, dict)
+            or not str(c.get("situation") or "").strip()
+            or not str(c.get("action") or "").strip()
+        ):
             continue
         nums = [n for n in c.get(numbers) or [] if isinstance(n, int) and not isinstance(n, bool)]
         unknowns = c.get("unknowns") or []
         unknowns = [unknowns] if isinstance(unknowns, str) else [str(u) for u in unknowns if str(u).strip()]
-        cards.append({"situation": str(c["situation"]).strip(), "action": str(c["action"]).strip(),
-                      numbers: sorted({n for n in nums if allowed is None or n in allowed}), "unknowns": unknowns})
+        cards.append(
+            {
+                "situation": str(c["situation"]).strip(),
+                "action": str(c["action"]).strip(),
+                numbers: sorted({n for n in nums if allowed is None or n in allowed}),
+                "unknowns": unknowns,
+            }
+        )
     if not cards:
         raise CardError("no card with a situation and an action")
     return cards
@@ -101,10 +117,14 @@ def propose(records: list[tuple[str, dict]], env, chat, batch: int = 8, workers:
             return ask_cards(chat, READ_CARDS, "\n\n".join(texts[i] for i in span), allowed={i + 1 for i in span})
         except CardError as e:
             return e
+
     with ThreadPoolExecutor(workers) as pool:
         results = list(pool.map(read, spans))
-    failed = [{"records": [span[0] + 1, span[-1] + 1], "error": str(r)}
-              for span, r in zip(spans, results) if isinstance(r, CardError)]
+    failed = [
+        {"records": [span[0] + 1, span[-1] + 1], "error": str(r)}
+        for span, r in zip(spans, results)
+        if isinstance(r, CardError)
+    ]
     found = [r for r in results if not isinstance(r, CardError)]
     if not found:
         raise CardError("every batch failed: " + "; ".join(f["error"] for f in failed))
@@ -117,22 +137,47 @@ def merge(found: list[list[dict]], records: list[tuple[str, dict]], chat) -> lis
     if len(found) == 1:
         cards = [dict(c) for c in flat]
     else:
-        listing = "\n".join(f"Card {k}: When {c['situation']}: {c['action']}"
-                            + (f" Unsettled: {'; '.join(c['unknowns'])}" if c["unknowns"] else "")
-                            for k, c in enumerate(flat, 1))
+        listing = "\n".join(
+            f"Card {k}: When {c['situation']}: {c['action']}"
+            + (f" Unsettled: {'; '.join(c['unknowns'])}" if c["unknowns"] else "")
+            for k, c in enumerate(flat, 1)
+        )
         merged = ask_cards(chat, MERGE_CARDS, listing, numbers="from", allowed=set(range(1, len(flat) + 1)))
-        cards = [{"situation": m["situation"], "action": m["action"], "unknowns": m["unknowns"][:3],
-                  "evidence": sorted({n for k in m["from"] for n in flat[k - 1]["evidence"]}), "from": m["from"]}
-                 for m in merged]
+        cards = [
+            {
+                "situation": m["situation"],
+                "action": m["action"],
+                "unknowns": m["unknowns"][:3],
+                "evidence": sorted({n for k in m["from"] for n in flat[k - 1]["evidence"]}),
+                "from": m["from"],
+            }
+            for m in merged
+        ]
     for c in cards:
         c["records"] = [records[n - 1][0] for n in c["evidence"]]
     return cards
 
 
-STATES = {"unconfirmed": "확인 전", "confirmed": "확인됨", "ask": "더 물어봐야 함", "dropped": "뺌"}
-PREAMBLE = ("Rules the person at this desk confirmed from their own work. Follow them for the choices they cover. "
-            "If a choice comes up that no rule here covers, or information you need is missing, do not guess: "
-            "ask the owner with ask_owner.")
+STATES = {
+    "unconfirmed": "확인 전",
+    "applied": "바로 적용",
+    "confirmed": "확인됨",
+    "ask": "더 물어봐야 함",
+    "dropped": "뺌",
+}
+PREAMBLE = (
+    "Rules the person at this desk confirmed from their own work. Follow them for the choices they cover. "
+    "If a choice comes up that no rule here covers, or information you need is missing, do not guess: "
+    "ask the owner with ask_owner."
+)
+# Cards found in the records work at once (11-03: going through each one makes this a manual tool, and the person changed none
+# of the ten). The model is told that is what they are, and a person's own word still outranks them.
+FOUND_PREAMBLE = (
+    "Rules found in the records of this person's work. They have not gone through each one; what they decided "
+    "themselves is marked. Follow them for the choices they cover. "
+    "If a choice comes up that no rule here covers, or information you need is missing, do not guess: "
+    "ask the owner with ask_owner."
+)
 FIELDS = ("situation", "action")
 
 
@@ -156,8 +201,14 @@ class RuleBook:
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"version": self.version, "cards": self.cards, "texts": self.texts,
-                                   "log": self.log}, ensure_ascii=False, indent=1) + "\n")
+        tmp.write_text(
+            json.dumps(
+                {"version": self.version, "cards": self.cards, "texts": self.texts, "log": self.log},
+                ensure_ascii=False,
+                indent=1,
+            )
+            + "\n"
+        )
         tmp.replace(self.path)
 
     def card(self, cid: str) -> dict:
@@ -170,20 +221,35 @@ class RuleBook:
         self.version += 1
         self.texts[str(self.version)] = self.as_procedure()
 
-    def add_proposed(self, cards: list[dict], source: str, ko: dict | None = None) -> list[str]:
-        """New cards from a proposal, numbered after the existing ones, all waiting for the person."""
+    def add_proposed(
+        self, cards: list[dict], source: str, ko: dict | None = None, status: str = "unconfirmed"
+    ) -> list[str]:
+        """New cards from a proposal, numbered after the existing ones: waiting for the person, or at work at once."""
         ids = []
         for c in cards:
             n = max((x["n"] for x in self.cards), default=0) + 1
             k = (ko or {}).get(len(ids), {})
-            self.cards.append({
-                "id": f"R{n}", "n": n, "status": "unconfirmed", "source": source, "pending": None,
-                **{f: {"en": c[f], "ko": k.get(f), "by": "records"} for f in FIELDS},
-                "unknowns": [{"en": u, "ko": (k.get("unknowns") or [None] * len(c["unknowns"]))[i]}
-                             for i, u in enumerate(c["unknowns"])],
-                "evidence": c.get("evidence", []), "records": c.get("records", []), "gone": []})
+            self.cards.append(
+                {
+                    "id": f"R{n}",
+                    "n": n,
+                    "status": status,
+                    "source": source,
+                    "pending": None,
+                    **{f: {"en": c[f], "ko": k.get(f), "by": "records"} for f in FIELDS},
+                    "unknowns": [
+                        {"en": u, "ko": (k.get("unknowns") or [None] * len(c["unknowns"]))[i]}
+                        for i, u in enumerate(c["unknowns"])
+                    ],
+                    "evidence": c.get("evidence", []),
+                    "records": c.get("records", []),
+                    "gone": [],
+                }
+            )
             ids.append(f"R{n}")
         self._note("proposed", None, cards=ids, source=source)
+        if status != "unconfirmed" and ids:
+            self._bump()
         self.save()
         return ids
 
@@ -248,12 +314,15 @@ class RuleBook:
                 status = "confirmed"
             settled = " ".join(f'On "{x["question"]}": {x["en"]}' for x in c.get("settled", []))
             settled = f" The person also decided. {settled}" if settled else ""
-            if status == "confirmed":
+            if status in ("confirmed", "applied"):
                 lines.append(f"{c['id']}. When {fields['situation']}: {fields['action']}{settled}")
             elif status == "ask":
-                lines.append(f"{c['id']} (not settled: do not decide this yourself, ask the owner). "
-                             f"When {fields['situation']}: {fields['action']}{settled}")
-        return (PREAMBLE + "\n" + "\n".join(lines)) if lines else ""
+                lines.append(
+                    f"{c['id']} (not settled: do not decide this yourself, ask the owner). "
+                    f"When {fields['situation']}: {fields['action']}{settled}"
+                )
+        head = FOUND_PREAMBLE if any(c["status"] == "applied" for c in self.cards) else PREAMBLE
+        return (head + "\n" + "\n".join(lines)) if lines else ""
 
     def text_at(self, version: int) -> str:
         return self.texts.get(str(version), "")

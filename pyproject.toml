@@ -1,8 +1,9 @@
 [project]
 name = "workalike"
 version = "0.1.0"
-description = "Watch how a person works, keep what they saw and did, and train a LoRA that works their way."
+description = "The agent that learns the rules nobody wrote down."
 requires-python = ">=3.12"
+license = "Apache-2.0"
 dependencies = []
 
 [project.optional-dependencies]
@@ -12,3 +13,12 @@ screen = ["playwright>=1.50"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["experiments", "site/dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+# Long strings are prompts and page text. l, lambdas and zip() are read at the call site; the loop lambdas run at once.
+ignore = ["E501", "E741", "E731", "B023", "B905", "B007"]

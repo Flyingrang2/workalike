@@ -1,9 +1,10 @@
 """Desk versions. Each bundles the tools, their handlers, the system prompt and how a ticket is shown.
 
-quote-desk/1 is the desk the E1 and E2 runs used and stays the default everywhere, so its
+quote-desk/1 is the desk the first experiments used and stays the default everywhere, so its
 records, training files and adapters keep their hashes. quote-desk/2 adds split shipments,
 the floor price, the owner and the customer's answer (workalike/desk2.py).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
