@@ -154,6 +154,8 @@
     const without = column("No manual", "Muse Spark Open"), mine = column("Your manual", "Muse Spark Open, same request");
     const lora = column("Trained, no manual", `Muse Glimmer with the LoRA, recorded on our GPU, played at ${LORA_SPEED}x.`);
     lora.el.classList.add("lora");
+    lora.el.insertBefore(h("p", { class: "aside" }, "Why a recording? A LoRA needs its own GPU, and we don't leave a 48 GB server running for a web page. This is a real run: ",
+      h("a", { href: "https://github.com/Flyingrang2/workalike/blob/main/baselines/results/demo-lora/results.jsonl" }, "read the raw record"), ", or ", h("a", { href: "#download" }, "download the LoRA"), " and run it yourself."), lora.steps);
     const mode = h("p", { class: "mode" }, "Live on Muse Spark Open, served by Baseten.");
     const verdict = h("p", { class: "verdict" }), after = h("div", { class: "after" });
     results.replaceChildren(mode, verdict, h("div", { class: "arms" }, without.el, mine.el, lora.el), after);
