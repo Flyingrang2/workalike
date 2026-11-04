@@ -9,7 +9,7 @@ workalike finds them in how you work, asks you only what it can't tell, and trai
 
 In our test on a sample desk, with no rules in its prompt: 0.91% off a pushback where the base model gave 4.94%, a question where it made up a ship date, and about five times the tickets on one GPU, at 41 of 48 right against 45 reading the rules.
 
-- **See it in your browser, about a minute, nothing to install:** https://flyingrang2.github.io/workalike/ (one request handled three ways on the same model and GPU: the real recorded runs, played together at 10x)
+- **See it in your browser, about a minute, nothing to install:** https://flyingrang2.github.io/workalike/ (one request handled three ways on the same model and GPU: the real recorded runs, played together and sped up)
 - **Watch the three-minute film:** https://youtu.be/nrKQsbhO6Go
 - **Download the LoRA, 419 MB, free:** [latest release](https://github.com/Flyingrang2/workalike/releases/latest)
 - **Check the numbers yourself, no GPU:** [three commands](#check-it-without-a-gpu) and the [evidence page](https://flyingrang2.github.io/workalike/evidence.html)

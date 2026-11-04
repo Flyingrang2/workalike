@@ -28,7 +28,7 @@ The desk's check names are in Korean in these files, because the desk's checks s
 ## Folders
 
 - `test24b/`: the main test. 24 new tickets from a new seed, three arms, two runs each. `graded.jsonl` has one row per arm, run and ticket, with the tool calls, the final draft, the checks, the time and the tokens. `first-drafts.jsonl` has the first draft of every run the checks sent back.
-- `test24b/race.jsonl`: the three runs the page plays together, ticket `discount-authority-yes`, first round, with every tool call in order. Only a run's total time was recorded, so the page spaces its steps evenly.
+- `test24b/race.jsonl`: the three runs the page plays together, ticket `discount-authority-yes`, first round, with every tool call in order. Only a run's totals were recorded, so the page spaces its steps evenly, counts its tokens up evenly, and speeds the clock up after the LoRA stops; each clock and count ends on the recorded value.
 - `test24/`: the earlier 24 tickets, in four arms: no rules (`none`), the 60 raw records in the prompt (`records`), the rules as found (`cards`), and the rules with the person's 29 answers (`checked`).
 - `test24-lora/`: the LoRA and the written rules on those earlier tickets, and three failure scenarios run three times each (`fail` arm): a broken price tool, a rule that does not apply, conflicting rules.
 - `throughput/`: one arm alone on the server, six at a time, wall clock in `tp.log`, from `scripts/throughput.sh`. The sheet is `test24b` again, so these scores are not a new test.

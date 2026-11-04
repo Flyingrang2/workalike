@@ -205,12 +205,14 @@ def race():
         r = runs[arm]
         draft = r["drafts"][0]
         listed = r["quotes"][min(r["quotes"])]["lines"][0]
-        price = r["quotes"][draft["quote_id"]]["lines"][0]["unit_price"]
+        quoted = r["quotes"][draft["quote_id"]]["lines"][0]
+        price = quoted["unit_price"]
         out.append(
             {
                 "arm": arm,
                 "seconds": round(r["seconds"]),
                 "off": round((1 - price / listed["unit_price"]) * 100, 2),
+                "given": round(listed["line_total"] - quoted["line_total"], 2),
                 "tokens": r["completion_tokens"],
                 "draft": draft["message"],
                 "steps": race_steps(r),

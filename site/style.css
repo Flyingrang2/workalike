@@ -305,7 +305,14 @@ main > .hero { padding-top: clamp(24px, 3.5vw, 44px); }
 #race { display: grid; gap: 16px; }
 #race .verdict { max-width: none; min-height: 0; }
 .arms.arms { align-items: stretch; }
-.racer { align-content: start; grid-template-rows: auto auto minmax(4.6em, auto) auto; }
+.racer { align-content: start; grid-template-rows: auto auto auto minmax(6.2em, auto) auto; }
+.tokens { display: grid; gap: 4px; font-size: .92em; color: var(--pencil); margin-bottom: 6px; }
+.token-count { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.lora .token-count { color: var(--orange-ink); }
+.token-track { height: 8px; background: var(--wash); border-radius: 4px; overflow: hidden; }
+.token-bar { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 4px; }
+.lora .token-bar { background: var(--orange); }
+.given { font-weight: 600; font-variant-numeric: tabular-nums; }
 .racer h3 { font: 600 1.1rem/1.3 var(--body); }
 .racer .sub { margin-top: 2px; }
 .racer .clock { font: 600 clamp(2.2rem, 4vw, 3rem)/1 var(--body); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
@@ -325,6 +332,7 @@ main > .hero { padding-top: clamp(24px, 3.5vw, 44px); }
   .hero-art { display: none; }
   .racer { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; gap: 6px 12px; padding: 14px; }
   .racer-head { grid-column: 1; }
+  .tokens { grid-column: 1 / -1; }
   .racer .clock { grid-column: 2; grid-row: 1; font-size: 2rem; align-self: center; }
   .result { grid-column: 1 / -1; }
   .racer .steps { display: none; }

@@ -283,6 +283,7 @@ def test_the_race_plays_the_recorded_runs_as_they_were():
         ("checked", 425, 1.04),
         ("p-checked", 32, 0.91),
     ]
+    assert [(r["given"], r["tokens"]) for r in race["runs"]] == [(123.5, 6341), (26.0, 8130), (22.75, 580)]
     for r in race["runs"]:
         assert r["steps"][-1]["text"].startswith("Wrote a reply and stopped")
     assert sum(s.get("held", False) for s in race["runs"][2]["steps"]) == 0
